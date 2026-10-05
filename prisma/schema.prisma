@@ -1,0 +1,815 @@
+// One2Infinite Recruitment Solutions — Internal Business Management System
+// Phase 1 database schema.
+//
+// Conventions:
+//  - Money is stored as Decimal (Postgres NUMERIC) and computed with decimal.js.
+//    NEVER use floats for currency.
+//  - Financial records (invoices, payments) are never hard-deleted — they are
+//    moved to CANCELLED / REVERSED states and retained for audit.
+//  - All foreign keys are indexed; frequently-searched columns are indexed.
+//  - RBAC is table-driven (roles + permissions) so new roles can be added later
+//    without code changes.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ---------------------------------------------------------------------------
+// AUTH / RBAC
+// ---------------------------------------------------------------------------
+
+model User {
+  id               String    @id @default(cuid())
+  email            String    @unique
+  passwordHash     String
+  isActive         Boolean   @default(true)
+  // Brute-force protection
+  failedLoginCount Int       @default(0)
+  lockedUntil      DateTime?
+  lastLoginAt      DateTime?
+  // 2FA-ready (disabled by default in Phase 1)
+  twoFactorSecret  String?
+  twoFactorEnabled Boolean   @default(false)
+
+  roleId String
+  role   Role   @relation(fields: [roleId], references: [id])
+
+  employee     Employee?
+  auditLogs    AuditLog[]
+  payments     Payment[]      @relation("PaymentRecordedBy")
+  uploads      Document[]     @relation("DocumentUploadedBy")
+  decisions    LeaveRequest[] @relation("LeaveDecidedBy")
+  notifications Notification[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([roleId])
+  @@map("users")
+}
+
+model Role {
+  id          String           @id @default(cuid())
+  name        String           @unique // SUPER_ADMIN, RECRUITER
+  description String?
+  isSystem    Boolean          @default(false) // system roles cannot be deleted
+  users       User[]
+  permissions RolePermission[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String           @id @default(cuid())
+  key         String           @unique // e.g. "invoice.create", "payroll.process"
+  description String?
+  roles       RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+// ---------------------------------------------------------------------------
+// EMPLOYEES / HR
+// ---------------------------------------------------------------------------
+
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERN
+}
+
+enum EmployeeStatus {
+  ACTIVE
+  INACTIVE
+  ON_NOTICE
+  EXITED
+}
+
+model Employee {
+  id             String         @id @default(cuid())
+  employeeCode   String         @unique
+  name           String
+  phone          String?
+  designation    String?
+  department     String?
+  joiningDate    DateTime?
+  employmentType EmploymentType @default(FULL_TIME)
+  status         EmployeeStatus @default(ACTIVE)
+
+  // SENSITIVE — Admin-only. Never exposed to ordinary employees via API/UI.
+  monthlySalary Decimal? @db.Decimal(12, 2)
+  bankName      String?
+  bankAccount   String?
+  bankIfsc      String?
+  pan           String?
+
+  emergencyContact String?
+  address          String?
+  photoRef         String? // storage reference, served via signed URL only
+
+  userId String? @unique
+  user   User?   @relation(fields: [userId], references: [id])
+
+  attendance    Attendance[]
+  leaveRequests LeaveRequest[]
+  payslips      Payslip[]
+  jobs          Job[]          @relation("JobRecruiter")
+  candidates    Candidate[]    @relation("CandidateRecruiter")
+  applications  CandidateApplication[] @relation("ApplicationRecruiter")
+  tasks         Task[]         @relation("TaskAssignee")
+  expenses      Expense[]      @relation("ExpenseEmployee")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@map("employees")
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  HALF_DAY
+  ON_LEAVE
+  HOLIDAY
+  WEEKEND
+}
+
+model Attendance {
+  id           String           @id @default(cuid())
+  employeeId   String
+  employee     Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  date         DateTime         @db.Date
+  clockIn      DateTime?
+  clockOut     DateTime?
+  workedMinutes Int             @default(0)
+  status       AttendanceStatus @default(PRESENT)
+  isLate       Boolean          @default(false)
+  // Light device/context metadata (no precise location unless explicitly enabled)
+  clockInIp    String?
+  note         String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([employeeId, date])
+  @@index([date])
+  @@map("attendance")
+}
+
+enum LeaveType {
+  CASUAL
+  SICK
+  PAID
+  UNPAID
+  OTHER
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+model LeaveRequest {
+  id          String      @id @default(cuid())
+  employeeId  String
+  employee    Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  type        LeaveType
+  fromDate    DateTime    @db.Date
+  toDate      DateTime    @db.Date
+  days        Decimal     @db.Decimal(4, 1) // supports half-days (0.5)
+  reason      String?
+  status      LeaveStatus @default(PENDING)
+  decidedById String?
+  decidedBy   User?       @relation("LeaveDecidedBy", fields: [decidedById], references: [id])
+  decidedAt   DateTime?
+  decisionNote String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([employeeId])
+  @@index([status])
+  @@map("leave_requests")
+}
+
+enum PayrollStatus {
+  DRAFT
+  APPROVED
+  PAID
+}
+
+model Payslip {
+  id          String        @id @default(cuid())
+  employeeId  String
+  employee    Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  periodYear  Int
+  periodMonth Int // 1-12
+  workingDays Int
+  presentDays Decimal       @db.Decimal(5, 1)
+  paidLeave   Decimal       @db.Decimal(5, 1) @default(0)
+  unpaidLeave Decimal       @db.Decimal(5, 1) @default(0)
+  lopDays     Decimal       @db.Decimal(5, 1) @default(0)
+  grossSalary Decimal       @db.Decimal(12, 2)
+  lopAmount   Decimal       @db.Decimal(12, 2) @default(0)
+  bonus       Decimal       @db.Decimal(12, 2) @default(0)
+  deductions  Decimal       @db.Decimal(12, 2) @default(0)
+  netSalary   Decimal       @db.Decimal(12, 2)
+  status      PayrollStatus @default(DRAFT)
+  note        String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([employeeId, periodYear, periodMonth])
+  @@index([periodYear, periodMonth])
+  @@map("payslips")
+}
+
+// ---------------------------------------------------------------------------
+// CRM — CLIENTS
+// ---------------------------------------------------------------------------
+
+enum ClientStatus {
+  ACTIVE
+  INACTIVE
+  PROSPECT
+}
+
+model Client {
+  id              String       @id @default(cuid())
+  name            String
+  type            String?
+  industry        String?
+  website         String?
+  address         String?
+  city            String?
+  state           String?
+  gstin           String?
+  pan             String?
+  billingAddress  String?
+  agreementStatus String?
+  agreementDate   DateTime?
+  notes           String?
+  status          ClientStatus @default(PROSPECT)
+
+  contacts  ClientContact[]
+  terms     RecruitmentTerm?
+  jobs      Job[]
+  placements Placement[]
+  invoices  Invoice[]
+  payments  Payment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([name])
+  @@index([status])
+  @@map("clients")
+}
+
+model ClientContact {
+  id          String  @id @default(cuid())
+  clientId    String
+  client      Client  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  name        String
+  designation String?
+  email       String?
+  phone       String?
+  whatsapp    String?
+  isPrimary   Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId])
+  @@map("client_contacts")
+}
+
+enum FeeType {
+  FIXED
+  PERCENT
+  TIERED
+  CUSTOM
+}
+
+model RecruitmentTerm {
+  id              String   @id @default(cuid())
+  clientId        String   @unique
+  client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  feeType         FeeType  @default(PERCENT)
+  percent         Decimal? @db.Decimal(6, 3) // e.g. 6.000 (%)
+  fixedAmount     Decimal? @db.Decimal(12, 2)
+  tiers           Json? // [{label, kind:'FIXED'|'PERCENT', value, minCtc?, maxCtc?}]
+  paymentDueDays  Int      @default(15)
+  replacementDays Int      @default(90)
+  replacementCount Int     @default(1)
+  agreementRef    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("recruitment_terms")
+}
+
+// ---------------------------------------------------------------------------
+// JOBS / REQUIREMENTS
+// ---------------------------------------------------------------------------
+
+enum JobStatus {
+  NEW
+  ACTIVE
+  ON_HOLD
+  SUBMITTED
+  INTERVIEWING
+  FILLED
+  CLOSED
+  CANCELLED
+}
+
+enum JobPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model Job {
+  id             String         @id @default(cuid())
+  clientId       String
+  client         Client         @relation(fields: [clientId], references: [id])
+  title          String
+  location       String?
+  department     String?
+  openings       Int            @default(1)
+  salaryMin      Decimal?       @db.Decimal(12, 2)
+  salaryMax      Decimal?       @db.Decimal(12, 2)
+  expMin         Int?
+  expMax         Int?
+  employmentType EmploymentType @default(FULL_TIME)
+  workingDays    String?
+  workingHours   String?
+  requiredSkills String?
+  preferredSkills String?
+  jd             String?
+  recruiterId    String?
+  recruiter      Employee?      @relation("JobRecruiter", fields: [recruiterId], references: [id])
+  dateReceived   DateTime       @default(now())
+  targetCloseDate DateTime?
+  priority       JobPriority    @default(MEDIUM)
+  status         JobStatus      @default(NEW)
+
+  applications CandidateApplication[]
+  placements   Placement[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId])
+  @@index([status])
+  @@index([recruiterId])
+  @@map("jobs")
+}
+
+// ---------------------------------------------------------------------------
+// CANDIDATES — a single record is reused across multiple applications
+// ---------------------------------------------------------------------------
+
+model Candidate {
+  id                String   @id @default(cuid())
+  fullName          String
+  mobile            String?
+  email             String?
+  location          String?
+  currentCompany    String?
+  currentDesignation String?
+  totalExperience   Decimal? @db.Decimal(4, 1)
+  currentCtc        Decimal? @db.Decimal(12, 2)
+  expectedCtc       Decimal? @db.Decimal(12, 2)
+  noticePeriod      String?
+  skills            String?
+  resumeRef         String? // storage reference, signed URL only
+  source            String?
+  recruiterId       String?
+  recruiter         Employee? @relation("CandidateRecruiter", fields: [recruiterId], references: [id])
+  notes             String?
+
+  applications CandidateApplication[]
+  placements   Placement[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([mobile])
+  @@index([email])
+  @@index([fullName])
+  @@index([recruiterId])
+  @@map("candidates")
+}
+
+enum PipelineStage {
+  SOURCED
+  SCREENED
+  SHORTLISTED
+  SUBMITTED
+  INTERVIEW
+  SELECTED
+  OFFER
+  JOINED
+  REJECTED
+  DROPPED
+  REPLACEMENT_REQUIRED
+  REPLACED
+}
+
+model CandidateApplication {
+  id          String        @id @default(cuid())
+  candidateId String
+  candidate   Candidate     @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  jobId       String
+  job         Job           @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  stage       PipelineStage @default(SOURCED)
+  recruiterId String?
+  recruiter   Employee?     @relation("ApplicationRecruiter", fields: [recruiterId], references: [id])
+  note        String?
+
+  placement Placement?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([candidateId, jobId])
+  @@index([jobId])
+  @@index([stage])
+  @@map("candidate_applications")
+}
+
+// ---------------------------------------------------------------------------
+// PLACEMENTS — connects recruitment to billing
+// ---------------------------------------------------------------------------
+
+enum PlacementStatus {
+  JOINED
+  REPLACEMENT_REQUIRED
+  REPLACED
+  CLOSED
+}
+
+enum ReplacementStatus {
+  WITHIN_GUARANTEE
+  EXPIRED
+  REPLACEMENT_REQUESTED
+  REPLACED
+  NA
+}
+
+model Placement {
+  id            String   @id @default(cuid())
+  candidateId   String
+  candidate     Candidate @relation(fields: [candidateId], references: [id])
+  clientId      String
+  client        Client    @relation(fields: [clientId], references: [id])
+  jobId         String
+  job           Job       @relation(fields: [jobId], references: [id])
+  applicationId String?   @unique
+  application   CandidateApplication? @relation(fields: [applicationId], references: [id])
+
+  joiningDate   DateTime  @db.Date
+  offeredCtc    Decimal   @db.Decimal(12, 2)
+  annualCtc     Decimal   @db.Decimal(12, 2)
+
+  // Fee snapshot (resolved from client terms at placement time, overridable)
+  feeType       FeeType
+  feePercent    Decimal?  @db.Decimal(6, 3)
+  fixedFee      Decimal?  @db.Decimal(12, 2)
+  calculatedFee Decimal   @db.Decimal(12, 2)
+
+  // Replacement guarantee
+  guaranteeStart   DateTime? @db.Date
+  guaranteeEnd     DateTime? @db.Date
+  guaranteeDays    Int       @default(90)
+  replacementStatus ReplacementStatus @default(WITHIN_GUARANTEE)
+
+  status PlacementStatus @default(JOINED)
+  notes  String?
+
+  invoice Invoice?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId])
+  @@index([candidateId])
+  @@index([jobId])
+  @@index([status])
+  @@map("placements")
+}
+
+// ---------------------------------------------------------------------------
+// INVOICING — GST-ready but disabled by default (taxRate defaults to 0)
+// ---------------------------------------------------------------------------
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+model Invoice {
+  id          String        @id @default(cuid())
+  number      String        @unique // e.g. OI-2026-0001
+  status      InvoiceStatus @default(DRAFT)
+
+  placementId String?    @unique
+  placement   Placement? @relation(fields: [placementId], references: [id])
+  clientId    String
+  client      Client     @relation(fields: [clientId], references: [id])
+
+  invoiceDate DateTime @db.Date
+  dueDate     DateTime @db.Date
+
+  // Snapshot fields so a historical invoice never changes if master data changes.
+  clientNameSnapshot    String
+  clientAddressSnapshot String?
+  contactPerson         String?
+  contactEmail          String?
+  contactPhone          String?
+
+  // Financials
+  subtotal   Decimal @db.Decimal(12, 2)
+  taxRate    Decimal @db.Decimal(6, 3) @default(0) // GST-ready; 0 = GST disabled
+  taxAmount  Decimal @db.Decimal(12, 2) @default(0)
+  total      Decimal @db.Decimal(12, 2)
+  amountPaid Decimal @db.Decimal(12, 2) @default(0)
+
+  // Terms snapshot
+  paymentTerms       String?
+  replacementTerms   String?
+  bankDetailsSnapshot String?
+  notes              String?
+
+  sentAt      DateTime?
+  cancelledAt DateTime?
+  cancelReason String?
+
+  items    InvoiceItem[]
+  payments Payment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId])
+  @@index([status])
+  @@index([dueDate])
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id          String   @id @default(cuid())
+  invoiceId   String
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  description String
+  candidateName String?
+  jobTitle    String?
+  joiningDate DateTime? @db.Date
+  ctc         Decimal?  @db.Decimal(12, 2)
+  feeType     FeeType?
+  feePercent  Decimal?  @db.Decimal(6, 3)
+  amount      Decimal   @db.Decimal(12, 2)
+
+  @@index([invoiceId])
+  @@map("invoice_items")
+}
+
+enum PaymentMode {
+  BANK_TRANSFER
+  UPI
+  CASH
+  CHEQUE
+  OTHER
+}
+
+model Payment {
+  id            String      @id @default(cuid())
+  invoiceId     String
+  invoice       Invoice     @relation(fields: [invoiceId], references: [id])
+  clientId      String
+  client        Client      @relation(fields: [clientId], references: [id])
+  amount        Decimal     @db.Decimal(12, 2)
+  paymentDate   DateTime    @db.Date
+  mode          PaymentMode @default(BANK_TRANSFER)
+  reference     String?
+  notes         String?
+  recordedById  String
+  recordedBy    User        @relation("PaymentRecordedBy", fields: [recordedById], references: [id])
+  // Financial records are reversed, not deleted.
+  isReversed    Boolean     @default(false)
+  reversedAt    DateTime?
+  reverseReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([invoiceId])
+  @@index([clientId])
+  @@map("payments")
+}
+
+// ---------------------------------------------------------------------------
+// EXPENSES
+// ---------------------------------------------------------------------------
+
+model Expense {
+  id            String      @id @default(cuid())
+  expenseDate   DateTime    @db.Date
+  category      String
+  amount        Decimal     @db.Decimal(12, 2)
+  vendor        String?
+  paymentMethod String?
+  description   String?
+  receiptRef    String?
+  employeeId    String?
+  employee      Employee?   @relation("ExpenseEmployee", fields: [employeeId], references: [id])
+  notes         String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([expenseDate])
+  @@index([category])
+  @@map("expenses")
+}
+
+// ---------------------------------------------------------------------------
+// TASKS (lean, Phase 1 minimal) / NOTIFICATIONS / DOCUMENTS
+// ---------------------------------------------------------------------------
+
+enum TaskStatus {
+  OPEN
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
+model Task {
+  id         String      @id @default(cuid())
+  title      String
+  assigneeId String?
+  assignee   Employee?   @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  dueDate    DateTime?
+  priority   JobPriority @default(MEDIUM)
+  status     TaskStatus  @default(OPEN)
+  notes      String?
+  // Optional loose link to any entity for context
+  entityType String?
+  entityId   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([assigneeId])
+  @@index([status])
+  @@map("tasks")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  body      String?
+  link      String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+model Document {
+  id           String   @id @default(cuid())
+  storageRef   String // private storage key; served via signed URL only
+  fileName     String
+  mimeType     String
+  sizeBytes    Int
+  docType      String // AGREEMENT, RESUME, INVOICE, RECEIPT, PAYSLIP, EMPLOYEE_DOC, OTHER
+  entityType   String? // CLIENT, CANDIDATE, EMPLOYEE, INVOICE, PLACEMENT
+  entityId     String?
+  uploadedById String
+  uploadedBy   User     @relation("DocumentUploadedBy", fields: [uploadedById], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([docType])
+  @@map("documents")
+}
+
+// ---------------------------------------------------------------------------
+// AUDIT LOG — Admin-only. Records all sensitive actions with before/after.
+// ---------------------------------------------------------------------------
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String // e.g. LOGIN, INVOICE_CREATE, PAYMENT_RECORD, PAYROLL_APPROVE
+  entity    String? // table/entity name
+  entityId  String?
+  before    Json?
+  after     Json?
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ---------------------------------------------------------------------------
+// COMPANY SETTINGS — singleton. Everything configurable lives here so no
+// company/bank/invoice detail is hardcoded.
+// ---------------------------------------------------------------------------
+
+model CompanySettings {
+  id      String @id @default("singleton") // enforce single row
+
+  // Company identity
+  companyName String  @default("One2Infinite Recruitment Solutions")
+  logoRef     String?
+  address     String?
+  phone       String?
+  email       String?
+  website     String?
+  gstin       String?
+  pan         String?
+
+  // Bank / payment (placeholders until Admin fills them in)
+  bankName      String?
+  bankAccount   String?
+  bankIfsc      String?
+  upiId         String?
+
+  // Invoice numbering — Admin configurable, employees cannot change.
+  invoicePrefix     String  @default("OI")
+  invoiceYearFormat String  @default("YYYY") // used in number template
+  nextInvoiceSeq    Int     @default(1)
+  invoiceSeqPadding Int     @default(4) // OI-2026-0001
+
+  // GST — disabled by default; enabling flips invoice tax behaviour on.
+  gstEnabled Boolean @default(false)
+  gstRate    Decimal @db.Decimal(6, 3) @default(18)
+
+  // Defaults applied to new terms/placements
+  defaultPaymentDays     Int     @default(15)
+  defaultReplacementDays Int     @default(90)
+  defaultFeePercent      Decimal @db.Decimal(6, 3) @default(8.33)
+
+  // Default invoice copy
+  defaultPaymentTerms   String?
+  defaultReplacementText String?
+  invoiceFooter         String? @default("Thank you for your business.")
+  invoiceEmailTemplate  String?
+
+  // Attendance rules (configurable, not hardcoded)
+  officeStartTime String @default("10:00") // HH:mm
+  officeEndTime   String @default("19:00")
+  graceMinutes    Int    @default(15)
+  halfDayHours    Decimal @db.Decimal(4, 2) @default(4)
+  fullDayHours    Decimal @db.Decimal(4, 2) @default(8)
+  workingDaysPerWeek Int @default(6)
+  weeklyOff       String  @default("Sun") // comma-separated day abbreviations
+
+  updatedAt DateTime @updatedAt
+
+  @@map("company_settings")
+}

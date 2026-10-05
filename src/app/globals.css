@@ -1,0 +1,62 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * One2Infinite internal app theme.
+ * Brand: gold #F4C430 / navy #1a1a2e, Inter font — matches the public site.
+ * shadcn-style HSL tokens map onto the brand so components stay consistent.
+ */
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 240 29% 14%; /* navy #1a1a2e */
+
+    --card: 0 0% 100%;
+    --card-foreground: 240 29% 14%;
+
+    --primary: 240 29% 14%; /* navy */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 17% 96%;
+    --secondary-foreground: 240 29% 14%;
+
+    --muted: 210 17% 96%;
+    --muted-foreground: 0 0% 47%;
+
+    --accent: 46 90% 57%; /* gold #F4C430 */
+    --accent-foreground: 240 29% 14%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 210 14% 92%;
+    --input: 210 14% 92%;
+    --ring: 46 90% 57%;
+
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+/* Thin, unobtrusive scrollbars for data-dense tables */
+@layer utilities {
+  .scrollbar-thin::-webkit-scrollbar {
+    height: 6px;
+    width: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 9999px;
+  }
+}
