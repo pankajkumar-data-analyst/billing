@@ -109,11 +109,16 @@ async function seedAdmin(adminRoleId: string) {
     console.log(`Admin ${email} already exists — skipping.`);
     return;
   }
-  const employee = await prisma.employee.create({
-    data: { name, employeeCode: "OI-001", designation: "Founder / Owner", department: "Management", status: "ACTIVE", joiningDate: new Date("2024-01-01") },
+  // The User<->Employee relation is owned by Employee (employee.userId),
+  // so create the User first, then the Employee linked to it.
+  const user = await prisma.user.create({
+    data: { email, passwordHash: await hash(password), roleId: adminRoleId },
   });
-  await prisma.user.create({
-    data: { email, passwordHash: await hash(password), roleId: adminRoleId, employeeId: employee.id },
+  await prisma.employee.create({
+    data: {
+      name, employeeCode: "OI-001", designation: "Founder / Owner", department: "Management",
+      status: "ACTIVE", joiningDate: new Date("2024-01-01"), userId: user.id,
+    },
   });
   console.log(`Created Super Admin: ${email} (password from SEED_ADMIN_PASSWORD).`);
 }
