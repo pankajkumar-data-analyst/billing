@@ -25,7 +25,11 @@ const nextConfig = {
     ];
   },
   // @react-pdf/renderer and argon2 are server-only native/heavy deps.
-  serverExternalPackages: ["@react-pdf/renderer", "argon2"],
+  // Next.js 14 uses experimental.serverComponentsExternalPackages
+  // (renamed to top-level serverExternalPackages in Next 15).
+  experimental: {
+    serverComponentsExternalPackages: ["@react-pdf/renderer", "argon2"],
+  },
 };
 
 export default nextConfig;
