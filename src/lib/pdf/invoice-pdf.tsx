@@ -1,6 +1,7 @@
 import React from "react";
 import path from "path";
-import { Document, Page, Text, View, StyleSheet, Font, Svg, Rect } from "@react-pdf/renderer";
+import fs from "fs";
+import { Document, Page, Text, View, StyleSheet, Font, Svg, Rect, Image } from "@react-pdf/renderer";
 import { formatINR } from "@/lib/money";
 import { formatDate } from "@/lib/utils";
 
@@ -78,8 +79,31 @@ const s = StyleSheet.create({
   statusBadge: { fontSize: 9, color: GOLD, fontWeight: "bold", textAlign: "right", marginTop: 4 },
 });
 
-/** Vector "X" logo mark (gold crossing bars) — renders reliably in PDF. */
+// Resolve the real logo file (transparent PNG) if present, else fall back to
+// the vector mark. Computed once at module load.
+const LOGO_FILE = (() => {
+  const candidates = [
+    path.join(process.cwd(), "public", "One2infinite logo-600kb.png"),
+    path.join(process.cwd(), "public", "logo.png"),
+  ];
+  for (const p of candidates) {
+    try {
+      if (fs.existsSync(p)) return p;
+    } catch {
+      /* ignore */
+    }
+  }
+  return null;
+})();
+
+/**
+ * Logo mark for the PDF header. Uses the owner's transparent PNG when
+ * available (works on the white invoice); otherwise a reliable gold "X" vector.
+ */
 function LogoMark() {
+  if (LOGO_FILE) {
+    return <Image src={LOGO_FILE} style={{ width: 54, height: 54, objectFit: "contain" }} />;
+  }
   return (
     <Svg width={34} height={34} viewBox="0 0 48 48">
       <Rect x={4} y={21} width={40} height={8} rx={2} fill={GOLD} transform="rotate(-38 24 24)" />

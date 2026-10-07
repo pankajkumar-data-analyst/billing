@@ -3,19 +3,20 @@ import { cn } from "@/lib/utils";
 /**
  * One2Infinite brand logo.
  *
- * The real logo is a dark/black-background JPEG the owner provided
- * (public/"One2infinite logo-600kb.jpeg"). Because it has a black background it
- * is used only on dark surfaces (sidebar, login card header) where it blends
- * in. On light surfaces (and the white invoice PDF) we fall back to the vector
- * wordmark so nothing shows an ugly black box.
+ * The real logo is a TRANSPARENT PNG the owner provided
+ * (public/"One2infinite logo-600kb.png"), so it works on both dark and light
+ * surfaces. Note: the logo's wordmark text ("ONE2INFINITE") is white, so on a
+ * light background only the gold "X" mark is clearly visible — which still
+ * looks clean.
  *
  * `variant`:
- *   - "image"    → the actual logo image (use on dark backgrounds)
- *   - "wordmark" → the gold "X" + "One2Infinite" text (use on light backgrounds)
+ *   - "image"    → the actual logo image
+ *   - "wordmark" → the gold "X" + "One2Infinite" text fallback
  */
 
-// The file name contains spaces and capitals, so it must be URL-encoded.
-export const LOGO_SRC = "/One2infinite%20logo-600kb.jpeg";
+// Transparent PNG logo. The file name contains a space, so it must be
+// URL-encoded for use as an <img> src.
+export const LOGO_SRC = "/One2infinite%20logo-600kb.png";
 
 export function Logo({
   className,
