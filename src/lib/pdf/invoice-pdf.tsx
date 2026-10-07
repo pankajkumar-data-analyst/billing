@@ -27,6 +27,22 @@ function ensureFonts() {
 }
 
 /**
+ * Break OpenType ligatures (fi, ffi, fl, ff) by inserting a zero-width
+ * non-joiner (U+200C) after an "f" that precedes i/l/f. Noto Sans otherwise
+ * merges "fi" into a single ligature glyph whose dotless form made
+ * "One2Infinite" render as "One2Infnite" and "office" as "ofce". This fix is
+ * font- and version-independent. Apply it to every dynamic string shown.
+ */
+function nl(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  return String(value)
+    // Normalise em/en dashes to a plain hyphen (covers older saved data too).
+    .replace(/[\u2012\u2013\u2014\u2015]/g, "-")
+    // Break f-ligatures.
+    .replace(/f(?=[fil])/g, "f\u200C");
+}
+
+/**
  * Professional invoice PDF (spec §12). Server-rendered with @react-pdf/renderer
  * — no paid service. Content is driven entirely by data passed in (company +
  * invoice), so it reflects editable Settings, not hardcoded values.
@@ -102,10 +118,10 @@ export function InvoicePdf({ company, invoice }: InvoicePdfData) {
           <View style={s.headerLeft}>
             <LogoMark />
             <View style={s.logoText}>
-              <Text style={s.companyName}>{company.name}</Text>
-              {company.address ? <Text style={s.muted}>{company.address}</Text> : null}
+              <Text style={s.companyName}>{nl(company.name)}</Text>
+              {company.address ? <Text style={s.muted}>{nl(company.address)}</Text> : null}
               <Text style={s.muted}>
-                {[company.phone, company.email, company.website].filter(Boolean).join("  ·  ")}
+                {nl([company.phone, company.email, company.website].filter(Boolean).join("  ·  "))}
               </Text>
               {company.gstin ? <Text style={s.muted}>GSTIN: {company.gstin}</Text> : null}
               {company.pan ? <Text style={s.muted}>PAN: {company.pan}</Text> : null}
@@ -136,11 +152,11 @@ export function InvoicePdf({ company, invoice }: InvoicePdfData) {
         {/* Bill To */}
         <View style={s.billTo}>
           <Text style={s.label}>Bill To</Text>
-          <Text style={[s.value, { fontWeight: "bold" }]}>{invoice.clientName}</Text>
-          {invoice.clientAddress ? <Text style={s.muted}>{invoice.clientAddress}</Text> : null}
-          {invoice.contactPerson ? <Text style={s.muted}>Attn: {invoice.contactPerson}</Text> : null}
+          <Text style={[s.value, { fontWeight: "bold" }]}>{nl(invoice.clientName)}</Text>
+          {invoice.clientAddress ? <Text style={s.muted}>{nl(invoice.clientAddress)}</Text> : null}
+          {invoice.contactPerson ? <Text style={s.muted}>Attn: {nl(invoice.contactPerson)}</Text> : null}
           {invoice.contactEmail || invoice.contactPhone ? (
-            <Text style={s.muted}>{[invoice.contactEmail, invoice.contactPhone].filter(Boolean).join("  ·  ")}</Text>
+            <Text style={s.muted}>{nl([invoice.contactEmail, invoice.contactPhone].filter(Boolean).join("  ·  "))}</Text>
           ) : null}
         </View>
 
@@ -153,9 +169,9 @@ export function InvoicePdf({ company, invoice }: InvoicePdfData) {
         {invoice.items.map((item, i) => (
           <View style={s.tableRow} key={i}>
             <View style={s.colDesc}>
-              <Text>{item.description}</Text>
-              {item.candidateName ? <Text style={s.muted}>Candidate: {item.candidateName}</Text> : null}
-              {item.jobTitle ? <Text style={s.muted}>Position: {item.jobTitle}</Text> : null}
+              <Text>{nl(item.description)}</Text>
+              {item.candidateName ? <Text style={s.muted}>Candidate: {nl(item.candidateName)}</Text> : null}
+              {item.jobTitle ? <Text style={s.muted}>Position: {nl(item.jobTitle)}</Text> : null}
               {item.joiningDate ? <Text style={s.muted}>Joined: {formatDate(item.joiningDate)}</Text> : null}
             </View>
             <Text style={s.colQty}>{item.ctc ? `CTC ${formatINR(item.ctc)}` : "-"}</Text>
@@ -183,18 +199,18 @@ export function InvoicePdf({ company, invoice }: InvoicePdfData) {
 
         {/* Terms */}
         <View style={s.terms}>
-          {invoice.paymentTerms ? <Text>Payment Terms: {invoice.paymentTerms}</Text> : null}
-          {invoice.replacementTerms ? <Text>Replacement Guarantee: {invoice.replacementTerms}</Text> : null}
+          {invoice.paymentTerms ? <Text>Payment Terms: {nl(invoice.paymentTerms)}</Text> : null}
+          {invoice.replacementTerms ? <Text>Replacement Guarantee: {nl(invoice.replacementTerms)}</Text> : null}
           {invoice.bankDetails ? (
             <>
               <Text style={[s.label, { marginTop: 10 }]}>Payment Details</Text>
-              <Text>{invoice.bankDetails}</Text>
+              <Text>{nl(invoice.bankDetails)}</Text>
             </>
           ) : null}
-          {invoice.notes ? <Text style={{ marginTop: 8 }}>{invoice.notes}</Text> : null}
+          {invoice.notes ? <Text style={{ marginTop: 8 }}>{nl(invoice.notes)}</Text> : null}
         </View>
 
-        <Text style={s.footer}>{invoice.footer}</Text>
+        <Text style={s.footer}>{nl(invoice.footer)}</Text>
       </Page>
     </Document>
   );
