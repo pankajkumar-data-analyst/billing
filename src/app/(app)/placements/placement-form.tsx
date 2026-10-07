@@ -81,7 +81,18 @@ export function PlacementForm({
 
   return (
     <form action={formAction} className="space-y-6">
-      {state.error ? <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{state.error}</p> : null}
+      {state.error ? (
+        <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p>{state.error}</p>
+          {e && Object.keys(e).length > 0 ? (
+            <ul className="mt-1 list-inside list-disc">
+              {Object.entries(e).map(([field, msg]) => (
+                <li key={field}><strong>{field}</strong>: {msg}</li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      ) : null}
 
       <Card>
         <CardHeader><CardTitle>Placement</CardTitle></CardHeader>

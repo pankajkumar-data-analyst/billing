@@ -11,6 +11,48 @@ const money = z
   .transform((v) => (v === "" ? undefined : Number(v)))
   .pipe(z.number().nonnegative().optional());
 
+/**
+ * Robust date parsing from form inputs. HTML <input type="date"> submits
+ * YYYY-MM-DD, but we also tolerate DD-MM-YYYY / DD/MM/YYYY just in case the
+ * browser locale sends a localized value. Returns a Date or fails validation
+ * with a clear message.
+ */
+function parseFlexibleDate(raw: unknown): Date | null {
+  if (raw instanceof Date) return isNaN(raw.getTime()) ? null : raw;
+  if (typeof raw !== "string") return null;
+  const s = raw.trim();
+  if (!s) return null;
+  // YYYY-MM-DD (native date input)
+  let m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if (m) {
+    const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    return isNaN(d.getTime()) ? null : d;
+  }
+  // DD-MM-YYYY or DD/MM/YYYY (localized display)
+  m = /^(\d{2})[-/](\d{2})[-/](\d{4})$/.exec(s);
+  if (m) {
+    const d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+    return isNaN(d.getTime()) ? null : d;
+  }
+  const fallback = new Date(s);
+  return isNaN(fallback.getTime()) ? null : fallback;
+}
+
+const requiredDate = z
+  .any()
+  .transform((v, ctx) => {
+    const d = parseFlexibleDate(v);
+    if (!d) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Please enter a valid date" });
+      return z.NEVER;
+    }
+    return d;
+  });
+
+const optionalDate = z
+  .any()
+  .transform((v) => parseFlexibleDate(v) ?? undefined);
+
 export const clientSchema = z.object({
   name: z.string().trim().min(2, "Company name is required"),
   type: optionalString,
@@ -92,7 +134,7 @@ export const applicationSchema = z.object({
 
 export const placementSchema = z.object({
   applicationId: z.string().min(1, "Application is required"),
-  joiningDate: z.coerce.date(),
+  joiningDate: requiredDate,
   offeredCtc: z.coerce.number().positive("Offered CTC must be greater than 0"),
   annualCtc: z.coerce.number().positive("Annual CTC must be greater than 0"),
   feeType: z.enum(["FIXED", "PERCENT", "TIERED", "CUSTOM"]),
@@ -106,8 +148,8 @@ export const placementSchema = z.object({
 export const invoiceSchema = z.object({
   clientId: z.string().min(1, "Client is required"),
   placementId: optionalString,
-  invoiceDate: z.coerce.date(),
-  dueDate: z.coerce.date(),
+  invoiceDate: requiredDate,
+  dueDate: requiredDate,
   clientNameSnapshot: z.string().trim().min(1, "Client name is required"),
   clientAddressSnapshot: optionalString,
   contactPerson: optionalString,
@@ -117,7 +159,7 @@ export const invoiceSchema = z.object({
   description: z.string().trim().min(1, "Description is required"),
   candidateName: optionalString,
   jobTitle: optionalString,
-  joiningDate: z.coerce.date().optional(),
+  joiningDate: optionalDate,
   ctc: money,
   feeType: z.enum(["FIXED", "PERCENT", "TIERED", "CUSTOM"]).optional(),
   feePercent: money,
@@ -132,7 +174,7 @@ export const invoiceSchema = z.object({
 export const paymentSchema = z.object({
   invoiceId: z.string().min(1),
   amount: z.coerce.number().positive("Amount must be greater than 0"),
-  paymentDate: z.coerce.date(),
+  paymentDate: requiredDate,
   mode: z.enum(["BANK_TRANSFER", "UPI", "CASH", "CHEQUE", "OTHER"]).default("BANK_TRANSFER"),
   reference: optionalString,
   notes: optionalString,
@@ -140,8 +182,8 @@ export const paymentSchema = z.object({
 
 export const leaveSchema = z.object({
   type: z.enum(["CASUAL", "SICK", "PAID", "UNPAID", "OTHER"]),
-  fromDate: z.coerce.date(),
-  toDate: z.coerce.date(),
+  fromDate: requiredDate,
+  toDate: requiredDate,
   reason: optionalString,
 });
 
