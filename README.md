@@ -138,6 +138,17 @@ placements +1.
 - **CSV/Excel financial export** is Phase 2.
 - **Tasks/notifications** tables exist but have minimal UI in Phase 1.
 
+## Invoice PDF fonts
+
+The invoice PDF registers **Noto Sans** (bundled in `src/lib/pdf/fonts/`) so the
+Indian Rupee sign (₹) and other glyphs render correctly — the built-in
+Helvetica font cannot render ₹. These TTF files ship in the repo, so PDF
+generation works offline with no network fetch.
+
+> **Vercel note:** when deploying, ensure the `src/lib/pdf/fonts/*.ttf` files are
+> included in the serverless bundle (they are inside `src/`, which Next traces;
+> if the font path fails on Vercel, switch `Font.register` to a hosted TTF URL).
+
 ## Security Notes
 
 - Passwords: Argon2id, strong-password policy, account lockout after repeated failures.

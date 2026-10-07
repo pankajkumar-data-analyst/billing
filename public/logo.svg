@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 64" fill="none" role="img" aria-label="One2Infinite Recruitment Solutions">
+  <!-- Gold X mark (crossing-hands motif, simplified) -->
+  <g>
+    <rect x="4" y="26" width="52" height="11" rx="3" fill="#F4C430" transform="rotate(-38 30 32)"/>
+    <rect x="4" y="26" width="52" height="11" rx="3" fill="#F4C430" transform="rotate(38 30 32)"/>
+  </g>
+  <!-- Wordmark -->
+  <text x="68" y="34" font-family="Inter, system-ui, sans-serif" font-size="24" font-weight="700" fill="#1a1a2e">
+    One2<tspan fill="#D4A017">Infinite</tspan>
+  </text>
+  <text x="69" y="50" font-family="Inter, system-ui, sans-serif" font-size="10" font-weight="500" letter-spacing="1.5" fill="#777777">
+    RECRUITMENT SOLUTIONS
+  </text>
+</svg>

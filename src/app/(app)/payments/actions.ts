@@ -6,7 +6,7 @@ import { assertPermission } from "@/lib/auth/guards";
 import { PERMISSIONS } from "@/lib/rbac";
 import { paymentSchema } from "@/lib/validation";
 import { deriveInvoiceStatus, outstanding } from "@/lib/services/invoice";
-import { add, subtract, toDbString, gte, money } from "@/lib/money";
+import { add, subtract, toDbString, money } from "@/lib/money";
 import { writeAudit, AUDIT } from "@/lib/auth/audit";
 
 type ActionState = { error?: string; fieldErrors?: Record<string, string> };
@@ -76,8 +76,11 @@ export async function reversePayment(paymentId: string, formData: FormData): Pro
     await tx.payment.update({ where: { id: paymentId }, data: { isReversed: true, reversedAt: new Date(), reverseReason: reason || "Reversed by admin" } });
     const newPaid = subtract(payment.invoice.amountPaid, payment.amount);
     const safePaid = newPaid.isNegative() ? "0.00" : toDbString(newPaid);
+    // After reversing, recompute status from the new paid amount. Use SENT as
+    // the base (not CANCELLED) so deriveInvoiceStatus can resolve to
+    // PAID/PARTIALLY_PAID/OVERDUE/SENT based on the remaining balance.
     const status = deriveInvoiceStatus({
-      current: gte(safePaid, "0") ? "SENT" : (payment.invoice.status as never),
+      current: payment.invoice.status === "CANCELLED" ? "CANCELLED" : "SENT",
       total: payment.invoice.total,
       amountPaid: safePaid,
       dueDate: payment.invoice.dueDate,

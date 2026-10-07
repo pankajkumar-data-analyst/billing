@@ -263,7 +263,7 @@ async function seedDemo(recruiterRoleId: string) {
         clientNameSnapshot: client.name, clientAddressSnapshot: client.billingAddress,
         contactPerson: "Demo Contact", subtotal: money(fee), taxRate: money(0), taxAmount: money(0), total: money(fee),
         amountPaid: money(0), paymentTerms: "Payment due within 15 days", sentAt: new Date(),
-        items: { create: { description: `Recruitment fee — ${candidate.fullName} as ${job.title}`, candidateName: candidate.fullName, jobTitle: job.title, joiningDate, ctc: money(annual), feeType: placement.feeType, amount: money(fee) } },
+        items: { create: { description: `Recruitment fee - ${candidate.fullName} as ${job.title}`, candidateName: candidate.fullName, jobTitle: job.title, joiningDate, ctc: money(annual), feeType: placement.feeType, amount: money(fee) } },
       },
     });
 

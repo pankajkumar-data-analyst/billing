@@ -6,6 +6,10 @@ import { PERMISSIONS } from "@/lib/rbac";
 import { getSettings } from "@/lib/services/settings";
 import { InvoicePdf } from "@/lib/pdf/invoice-pdf";
 
+// PDF generation uses the filesystem (bundled fonts) + heavy deps — force the
+// Node.js runtime (not Edge).
+export const runtime = "nodejs";
+
 /**
  * GET /invoices/:id/pdf — stream the invoice as a PDF.
  * Authorization enforced server-side: must have INVOICE_VIEW. The PDF is never

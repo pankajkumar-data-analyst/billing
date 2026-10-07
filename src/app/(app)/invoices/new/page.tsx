@@ -54,7 +54,7 @@ export default async function NewInvoicePage({ searchParams }: { searchParams: {
         contactPerson: contact?.name ?? "",
         contactEmail: contact?.email ?? "",
         contactPhone: contact?.phone ?? "",
-        description: `Recruitment fee — placement of ${p.candidate.fullName} as ${p.job.title}`,
+        description: `Recruitment fee - placement of ${p.candidate.fullName} as ${p.job.title}`,
         candidateName: p.candidate.fullName,
         jobTitle: p.job.title,
         joiningDate: iso(p.joiningDate),
