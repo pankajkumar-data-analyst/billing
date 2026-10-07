@@ -6,10 +6,26 @@ import { z } from "zod";
  */
 
 const optionalString = z.string().trim().optional().or(z.literal("").transform(() => undefined));
+// Optional money field: empty / missing / whitespace all become undefined;
+// otherwise must be a non-negative number. Hidden inputs that submit "" (or
+// are absent entirely) are treated as "not provided" rather than invalid.
 const money = z
-  .union([z.string(), z.number()])
-  .transform((v) => (v === "" ? undefined : Number(v)))
-  .pipe(z.number().nonnegative().optional());
+  .any()
+  .transform((v, ctx) => {
+    if (v === undefined || v === null) return undefined;
+    const s = typeof v === "string" ? v.trim() : v;
+    if (s === "") return undefined;
+    const n = Number(s);
+    if (Number.isNaN(n)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Must be a number" });
+      return z.NEVER;
+    }
+    if (n < 0) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Must be zero or more" });
+      return z.NEVER;
+    }
+    return n;
+  });
 
 /**
  * Robust date parsing from form inputs. HTML <input type="date"> submits
