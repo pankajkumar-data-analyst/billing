@@ -1,4 +1,5 @@
 import { requireUser, hasPermission } from "@/lib/auth/guards";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { PERMISSIONS } from "@/lib/rbac";
 import { prisma } from "@/lib/prisma";
@@ -6,6 +7,7 @@ import { PageHeader } from "@/components/app/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { Badge, statusTone } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
 import { formatINR } from "@/lib/money";
 import { GeneratePayroll, PayslipActions } from "./payroll-controls";
 
@@ -60,7 +62,14 @@ export default async function PayrollPage({ searchParams }: { searchParams: { y?
                     <TD>{formatINR(s.grossSalary)}</TD>
                     <TD className="font-semibold">{formatINR(s.netSalary)}</TD>
                     <TD><Badge tone={statusTone(s.status)}>{s.status}</Badge></TD>
-                    <TD><PayslipActions id={s.id} status={s.status} /></TD>
+                    <TD>
+                      <div className="flex items-center gap-2">
+                        <PayslipActions id={s.id} status={s.status} />
+                        <Link href={`/payroll/${s.id}/pdf`} target="_blank" className={buttonVariants({ variant: "outline", size: "sm" })}>
+                          Payslip
+                        </Link>
+                      </div>
+                    </TD>
                   </TR>
                 ))
               )}
@@ -81,10 +90,10 @@ export default async function PayrollPage({ searchParams }: { searchParams: { y?
       <PageHeader title="My Payslips" />
       <Card>
         <Table>
-          <THead><TR><TH>Period</TH><TH>Working</TH><TH>Present</TH><TH>Gross</TH><TH>Net</TH><TH>Status</TH></TR></THead>
+          <THead><TR><TH>Period</TH><TH>Working</TH><TH>Present</TH><TH>Gross</TH><TH>Net</TH><TH>Status</TH><TH></TH></TR></THead>
           <TBody>
             {slips.length === 0 ? (
-              <TR><TD colSpan={6} className="py-10 text-center text-muted-foreground">No payslips available yet.</TD></TR>
+              <TR><TD colSpan={7} className="py-10 text-center text-muted-foreground">No payslips available yet.</TD></TR>
             ) : (
               slips.map((s) => (
                 <TR key={s.id}>
@@ -94,6 +103,11 @@ export default async function PayrollPage({ searchParams }: { searchParams: { y?
                   <TD>{formatINR(s.grossSalary)}</TD>
                   <TD className="font-semibold">{formatINR(s.netSalary)}</TD>
                   <TD><Badge tone={statusTone(s.status)}>{s.status}</Badge></TD>
+                  <TD>
+                    <Link href={`/payroll/${s.id}/pdf`} target="_blank" className={buttonVariants({ variant: "outline", size: "sm" })}>
+                      Download
+                    </Link>
+                  </TD>
                 </TR>
               ))
             )}
