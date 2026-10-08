@@ -120,6 +120,23 @@ placements +1.
 
 ---
 
+## Phase 2A — What's Included (added)
+
+Payslip PDF (admin: any; employee: own) · Leave balances with configurable
+annual quotas + auto-deduct on approval · Tasks & reminders (Overdue/Today/
+Upcoming) · In-app notifications (bell + auto events: leave requested/decided,
+invoice overdue) · Expense reports (category pie + monthly trend) · Admin CSV
+export (invoices, payments, placements, expenses).
+
+> **Phase 2A requires a database migration** (new `leave_balances` table +
+> leave-quota columns on `company_settings`). After pulling, run:
+> ```bash
+> npx prisma migrate dev --name phase2a
+> npx prisma generate
+> ```
+
+Still pending (Phase 2B): document uploads (Vercel Blob) and email (SMTP).
+
 ## Known Limitations (Phase 1)
 
 - **Not yet run/tested.** Authored without a runnable environment — expect to fix minor issues on
