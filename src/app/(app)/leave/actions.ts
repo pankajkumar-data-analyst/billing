@@ -6,6 +6,7 @@ import { assertPermission } from "@/lib/auth/guards";
 import { PERMISSIONS } from "@/lib/rbac";
 import { leaveSchema } from "@/lib/validation";
 import { writeAudit, AUDIT } from "@/lib/auth/audit";
+import { adjustUsage } from "@/lib/services/leave-balance";
 import { Decimal } from "decimal.js";
 
 type ActionState = { error?: string };
@@ -46,16 +47,47 @@ export async function cancelLeave(leaveId: string): Promise<void> {
   revalidatePath("/leave");
 }
 
-/** Admin approves or rejects (spec §19). */
+/** Admin approves or rejects (spec §19). On APPROVED, deduct the leave balance. */
 export async function decideLeave(leaveId: string, decision: "APPROVED" | "REJECTED", formData: FormData): Promise<void> {
   const admin = await assertPermission(PERMISSIONS.LEAVE_MANAGE);
   const note = String(formData.get("note") ?? "").trim();
   const leave = await prisma.leaveRequest.findUnique({ where: { id: leaveId } });
   if (!leave || leave.status !== "PENDING") return;
-  await prisma.leaveRequest.update({
-    where: { id: leaveId },
-    data: { status: decision, decidedById: admin.id, decidedAt: new Date(), decisionNote: note || null },
+
+  await prisma.$transaction(async (tx) => {
+    await tx.leaveRequest.update({
+      where: { id: leaveId },
+      data: { status: decision, decidedById: admin.id, decidedAt: new Date(), decisionNote: note || null },
+    });
+    if (decision === "APPROVED") {
+      await adjustUsage(tx, {
+        employeeId: leave.employeeId,
+        year: leave.fromDate.getFullYear(),
+        type: leave.type,
+        days: new Decimal(leave.days.toString()),
+        direction: "deduct",
+      });
+    }
   });
+
   await writeAudit({ userId: admin.id, action: AUDIT.LEAVE_DECISION, entity: "LeaveRequest", entityId: leaveId, after: { decision } });
+  revalidatePath("/leave");
+}
+
+/** Admin manually sets an employee's allocated quota for a leave type/year. */
+export async function adjustBalance(formData: FormData): Promise<void> {
+  const admin = await assertPermission(PERMISSIONS.LEAVE_MANAGE);
+  const employeeId = String(formData.get("employeeId") ?? "");
+  const year = Number(formData.get("year"));
+  const type = String(formData.get("type") ?? "") as "CASUAL" | "SICK" | "PAID" | "UNPAID" | "OTHER";
+  const allocated = Number(formData.get("allocated"));
+  if (!employeeId || !year || !type || Number.isNaN(allocated) || allocated < 0) return;
+
+  await prisma.leaveBalance.upsert({
+    where: { employeeId_year_type: { employeeId, year, type } },
+    update: { allocated: new Decimal(allocated).toFixed(1) },
+    create: { employeeId, year, type, allocated: new Decimal(allocated).toFixed(1), used: "0.0" },
+  });
+  await writeAudit({ userId: admin.id, action: "LEAVE_BALANCE_ADJUST", entity: "LeaveBalance", entityId: employeeId, after: { type, allocated } });
   revalidatePath("/leave");
 }

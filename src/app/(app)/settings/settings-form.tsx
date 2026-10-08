@@ -83,6 +83,15 @@ export function SettingsForm({ defaults }: { defaults: Record<string, unknown> }
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader><CardTitle>Annual Leave Quotas</CardTitle></CardHeader>
+        <CardContent className="grid gap-4 md:grid-cols-3">
+          <F name="leaveQuotaCasual" label="Casual Leave (days/year)"><Input id="leaveQuotaCasual" name="leaveQuotaCasual" type="number" step="0.5" defaultValue={v("leaveQuotaCasual")} /></F>
+          <F name="leaveQuotaSick" label="Sick Leave (days/year)"><Input id="leaveQuotaSick" name="leaveQuotaSick" type="number" step="0.5" defaultValue={v("leaveQuotaSick")} /></F>
+          <F name="leaveQuotaPaid" label="Paid Leave (days/year)"><Input id="leaveQuotaPaid" name="leaveQuotaPaid" type="number" step="0.5" defaultValue={v("leaveQuotaPaid")} /></F>
+        </CardContent>
+      </Card>
+
       <div className="flex justify-end"><Submit /></div>
     </form>
   );

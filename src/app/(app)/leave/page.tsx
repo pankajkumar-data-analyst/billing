@@ -8,6 +8,7 @@ import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { Badge, statusTone } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils";
 import { titleCase } from "@/lib/labels";
+import { getBalances } from "@/lib/services/leave-balance";
 import { ApplyLeaveForm, CancelLeaveButton, DecideLeave } from "./leave-forms";
 
 export const dynamic = "force-dynamic";
@@ -18,9 +19,11 @@ export default async function LeavePage() {
   const canManage = hasPermission(user, PERMISSIONS.LEAVE_MANAGE);
   if (!canSelf && !canManage) redirect("/403");
 
+  const year = new Date().getFullYear();
   const myLeave = canSelf && user.employeeId
     ? await prisma.leaveRequest.findMany({ where: { employeeId: user.employeeId }, orderBy: { createdAt: "desc" }, take: 30 })
     : [];
+  const myBalances = canSelf && user.employeeId ? await getBalances(user.employeeId, year) : [];
 
   const pending = canManage
     ? await prisma.leaveRequest.findMany({ where: { status: "PENDING" }, include: { employee: true }, orderBy: { createdAt: "asc" } })
@@ -28,7 +31,27 @@ export default async function LeavePage() {
 
   return (
     <div>
-      <PageHeader title="Leave" />
+      <PageHeader title="Leave" subtitle={canSelf ? `Your leave balance for ${year}` : undefined} />
+
+      {canSelf && myBalances.length > 0 ? (
+        <div className="mb-6 grid gap-4 sm:grid-cols-3">
+          {myBalances.map((b) => {
+            const allocated = Number(b.allocated);
+            const used = Number(b.used);
+            const remaining = Math.max(0, allocated - used);
+            return (
+              <Card key={b.id}>
+                <CardContent className="pt-5">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">{titleCase(b.type)} Leave</p>
+                  <p className="mt-1 text-2xl font-bold text-navy">{remaining}<span className="text-base font-normal text-muted-foreground"> / {allocated} left</span></p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{used} used</p>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      ) : null}
+
       <div className="grid gap-6 lg:grid-cols-3">
         {canSelf ? (
           <Card className="lg:col-span-1">

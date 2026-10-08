@@ -20,6 +20,7 @@ export default async function SettingsPage() {
     defaultFeePercent: s.defaultFeePercent.toString(), invoiceFooter: s.invoiceFooter, invoiceEmailTemplate: s.invoiceEmailTemplate,
     officeStartTime: s.officeStartTime, officeEndTime: s.officeEndTime, graceMinutes: s.graceMinutes,
     halfDayHours: s.halfDayHours.toString(), fullDayHours: s.fullDayHours.toString(), weeklyOff: s.weeklyOff,
+    leaveQuotaCasual: s.leaveQuotaCasual.toString(), leaveQuotaSick: s.leaveQuotaSick.toString(), leaveQuotaPaid: s.leaveQuotaPaid.toString(),
   };
   return (
     <div>
