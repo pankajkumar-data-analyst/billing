@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { Badge, statusTone } from "@/components/ui/badge";
 import { ClockWidget } from "./clock-widget";
+import { RegularizeForm, DecideRegularization } from "./regularize-forms";
 import { formatDate, formatTime } from "@/lib/utils";
 import { formatWorkedDuration } from "@/lib/services/attendance";
 import { titleCase } from "@/lib/labels";
@@ -60,11 +61,45 @@ export default async function AttendancePage() {
     todayAll = rows.map((r) => ({ name: r.employee.name, status: r.status, clockIn: r.clockIn, clockOut: r.clockOut, worked: r.workedMinutes }));
   }
 
+  // Regularization: employee's own history; admin's pending queue.
+  const myCorrections = canSelf && user.employeeId
+    ? await prisma.attendanceCorrection.findMany({ where: { employeeId: user.employeeId }, orderBy: { createdAt: "desc" }, take: 10 })
+    : [];
+  const pendingCorrections = canManage
+    ? await prisma.attendanceCorrection.findMany({ where: { status: "PENDING" }, include: { employee: true }, orderBy: { createdAt: "asc" } })
+    : [];
+
   return (
     <div>
       <PageHeader title="Attendance" subtitle={formatDate(today)} />
       <div className="grid gap-6 lg:grid-cols-3">
-        {widget ? <div className="lg:col-span-1">{widget}</div> : null}
+        {widget ? (
+          <div className="space-y-6 lg:col-span-1">
+            {widget}
+            {canSelf && user.employeeId ? (
+              <Card>
+                <CardHeader><CardTitle>Attendance Regularization</CardTitle></CardHeader>
+                <CardContent>
+                  <p className="mb-3 text-xs text-muted-foreground">
+                    Forgot to clock in/out or wrong time? Request a correction — an admin will review it.
+                  </p>
+                  <RegularizeForm />
+                  {myCorrections.length > 0 ? (
+                    <div className="mt-4 space-y-2 border-t pt-3">
+                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">My Requests</p>
+                      {myCorrections.map((c) => (
+                        <div key={c.id} className="flex items-center justify-between text-sm">
+                          <span>{formatDate(c.date)}</span>
+                          <Badge tone={statusTone(c.status)}>{titleCase(c.status)}</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </CardContent>
+              </Card>
+            ) : null}
+          </div>
+        ) : null}
 
         <div className={widget ? "lg:col-span-2" : "lg:col-span-3"}>
           {canManage ? (
@@ -89,6 +124,27 @@ export default async function AttendancePage() {
                     )}
                   </TBody>
                 </Table>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {canManage && pendingCorrections.length > 0 ? (
+            <Card className="mb-6">
+              <CardHeader><CardTitle>Regularization Requests ({pendingCorrections.length})</CardTitle></CardHeader>
+              <CardContent className="space-y-3">
+                {pendingCorrections.map((c) => (
+                  <div key={c.id} className="flex flex-col gap-2 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="font-medium text-navy">{c.employee.name} · {formatDate(c.date)}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {c.requestedIn ? `In ${formatTime(c.requestedIn)}` : ""}
+                        {c.requestedOut ? ` · Out ${formatTime(c.requestedOut)}` : ""}
+                        {c.reason ? ` · ${c.reason}` : ""}
+                      </p>
+                    </div>
+                    <DecideRegularization id={c.id} />
+                  </div>
+                ))}
               </CardContent>
             </Card>
           ) : null}

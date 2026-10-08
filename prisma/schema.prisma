@@ -45,6 +45,7 @@ model User {
   payments     Payment[]      @relation("PaymentRecordedBy")
   uploads      Document[]     @relation("DocumentUploadedBy")
   decisions    LeaveRequest[] @relation("LeaveDecidedBy")
+  correctionDecisions AttendanceCorrection[] @relation("CorrectionDecidedBy")
   notifications Notification[]
 
   createdAt DateTime @default(now())
@@ -134,6 +135,7 @@ model Employee {
   attendance    Attendance[]
   leaveRequests LeaveRequest[]
   leaveBalances LeaveBalance[]
+  corrections   AttendanceCorrection[]
   payslips      Payslip[]
   jobs          Job[]          @relation("JobRecruiter")
   candidates    Candidate[]    @relation("CandidateRecruiter")
@@ -179,6 +181,38 @@ model Attendance {
   @@unique([employeeId, date])
   @@index([date])
   @@map("attendance")
+}
+
+enum CorrectionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// Attendance regularization request (spec §17). Employees cannot edit
+// attendance directly — they raise a correction for a date (wrong/missing
+// clock in/out) which an admin approves (applying the requested times to the
+// attendance row and recomputing status) or rejects. Full audit trail.
+model AttendanceCorrection {
+  id             String           @id @default(cuid())
+  employeeId     String
+  employee       Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  date           DateTime         @db.Date
+  requestedIn    DateTime?        // requested clock-in time
+  requestedOut   DateTime?        // requested clock-out time
+  reason         String
+  status         CorrectionStatus @default(PENDING)
+  decidedById    String?
+  decidedBy      User?            @relation("CorrectionDecidedBy", fields: [decidedById], references: [id])
+  decidedAt      DateTime?
+  decisionNote   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([employeeId])
+  @@index([status])
+  @@map("attendance_corrections")
 }
 
 enum LeaveType {
