@@ -16,11 +16,14 @@ import { Decimal } from "decimal.js";
  * days from attendance and paid/unpaid leave from approved leave, then runs the
  * centralized payroll calc. Admin reviews before approving — no money moves.
  */
-export async function generatePayroll(formData: FormData): Promise<void> {
+export async function generatePayroll(
+  _prev: { error?: string; ok?: string } | undefined,
+  formData: FormData,
+): Promise<{ error?: string; ok?: string }> {
   const admin = await assertPermission(PERMISSIONS.PAYROLL_PROCESS);
   const year = Number(formData.get("year"));
   const month = Number(formData.get("month")); // 1-12
-  if (!year || !month) return;
+  if (!year || !month) return { error: "Please choose a month and year." };
 
   const settings = await getSettings();
   const weeklyOff = settings.weeklyOff.split(",").map((s) => s.trim());
@@ -29,9 +32,20 @@ export async function generatePayroll(formData: FormData): Promise<void> {
   const monthStart = new Date(year, month - 1, 1);
   const monthEnd = new Date(year, month, 0, 23, 59, 59);
 
+  // Only employees with a monthly salary set can be paid.
   const employees = await prisma.employee.findMany({
     where: { status: "ACTIVE", monthlySalary: { not: null } },
   });
+
+  if (employees.length === 0) {
+    const activeCount = await prisma.employee.count({ where: { status: "ACTIVE" } });
+    return {
+      error:
+        activeCount === 0
+          ? "No active employees found. Add an employee first."
+          : "No active employee has a Monthly Salary set. Open Employees → edit an employee → set Monthly Salary (Admin only), then generate payroll again.",
+    };
+  }
 
   for (const emp of employees) {
     const attendance = await prisma.attendance.findMany({
@@ -87,6 +101,7 @@ export async function generatePayroll(formData: FormData): Promise<void> {
 
   await writeAudit({ userId: admin.id, action: AUDIT.PAYROLL_GENERATE, after: { year, month, employees: employees.length } });
   revalidatePath("/payroll");
+  return { ok: `Generated ${employees.length} payslip(s). Review below.` };
 }
 
 export async function approvePayslip(payslipId: string): Promise<void> {
