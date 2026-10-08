@@ -153,6 +153,7 @@ enum AttendanceStatus {
   ABSENT
   LATE
   HALF_DAY
+  SHORT
   ON_LEAVE
   HOLIDAY
   WEEKEND
@@ -822,13 +823,13 @@ model CompanySettings {
   invoiceEmailTemplate  String?
 
   // Attendance rules (configurable, not hardcoded)
-  officeStartTime String @default("10:00") // HH:mm
-  officeEndTime   String @default("19:00")
+  officeStartTime String @default("10:00") // HH:mm — office starts 10:00 AM
+  officeEndTime   String @default("18:00") // 6:00 PM
   graceMinutes    Int    @default(15)
-  halfDayHours    Decimal @db.Decimal(4, 2) @default(4)
-  fullDayHours    Decimal @db.Decimal(4, 2) @default(8)
-  workingDaysPerWeek Int @default(6)
-  weeklyOff       String  @default("Sun") // comma-separated day abbreviations
+  halfDayHours    Decimal @db.Decimal(4, 2) @default(4) // under 4h = SHORT (not half-day)
+  fullDayHours    Decimal @db.Decimal(4, 2) @default(7) // 7h+ = full present day
+  workingDaysPerWeek Int @default(5)
+  weeklyOff       String  @default("Sat,Sun") // Mon-Fri working
 
   // Default annual leave quotas (spec §19). Applied when an employee's balance
   // for a year is first created. Admin-configurable.

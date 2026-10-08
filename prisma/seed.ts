@@ -89,12 +89,12 @@ async function seedSettings() {
       invoiceEmailTemplate:
         "Dear [Client Name],\n\nPlease find attached our recruitment invoice for the successful placement of [Candidate Name] for the position of [Job Title].\n\nInvoice No: [Invoice Number]\nAmount: [Amount]\nDue Date: [Due Date]\n\nKindly process the payment as per the agreed terms.\n\nRegards,\nOne2Infinite Recruitment Solutions",
       officeStartTime: "10:00",
-      officeEndTime: "19:00",
+      officeEndTime: "18:00",
       graceMinutes: 15,
       halfDayHours: money(4),
-      fullDayHours: money(8),
-      workingDaysPerWeek: 6,
-      weeklyOff: "Sun",
+      fullDayHours: money(7),
+      workingDaysPerWeek: 5,
+      weeklyOff: "Sat,Sun",
     },
   });
 }

@@ -14,7 +14,7 @@ export interface AttendanceRules {
   fullDayHours: number;
 }
 
-export type AttendanceStatus = "PRESENT" | "ABSENT" | "LATE" | "HALF_DAY";
+export type AttendanceStatus = "PRESENT" | "ABSENT" | "LATE" | "HALF_DAY" | "SHORT";
 
 export interface WorkedResult {
   workedMinutes: number;
@@ -38,7 +38,15 @@ export function isLate(clockIn: Date, rules: AttendanceRules): boolean {
 
 /**
  * Evaluate a full day's attendance once the employee has clocked out.
- * HALF_DAY if worked < halfDayHours; else PRESENT (or LATE flag).
+ *
+ * Thresholds (from settings):
+ *   worked >= fullDayHours            -> PRESENT (or LATE if clocked in late)
+ *   halfDayHours <= worked < fullDay  -> HALF_DAY
+ *   worked < halfDayHours             -> SHORT  (NOT counted as half-day;
+ *                                         too little time worked)
+ *
+ * So e.g. with halfDayHours = 4: under 4h is SHORT (0 pay-day), 4h-8h is
+ * HALF_DAY (0.5), 8h+ is a full PRESENT day.
  */
 export function evaluateAttendance(
   clockIn: Date,
@@ -50,8 +58,13 @@ export function evaluateAttendance(
   const late = isLate(clockIn, rules);
 
   let status: AttendanceStatus;
-  if (hours < rules.halfDayHours) status = "HALF_DAY";
-  else status = late ? "LATE" : "PRESENT";
+  if (hours < rules.halfDayHours) {
+    status = "SHORT";
+  } else if (hours < rules.fullDayHours) {
+    status = "HALF_DAY";
+  } else {
+    status = late ? "LATE" : "PRESENT";
+  }
 
   return { workedMinutes: mins, isLate: late, status };
 }

@@ -33,7 +33,7 @@ export function Badge({
 export function statusTone(status: string): Tone {
   const s = status.toUpperCase();
   if (["PAID", "ACTIVE", "APPROVED", "JOINED", "SELECTED", "PRESENT", "REPLACED"].includes(s)) return "success";
-  if (["OVERDUE", "CANCELLED", "REJECTED", "ABSENT", "DROPPED", "URGENT", "EXPIRED"].includes(s)) return "danger";
+  if (["OVERDUE", "CANCELLED", "REJECTED", "ABSENT", "DROPPED", "URGENT", "EXPIRED", "SHORT"].includes(s)) return "danger";
   if (["PARTIALLY_PAID", "ON_HOLD", "PENDING", "LATE", "HALF_DAY", "ON_NOTICE", "EXPIRING_SOON", "REPLACEMENT_REQUIRED"].includes(s)) return "warning";
   if (["SENT", "INTERVIEWING", "INTERVIEW", "SUBMITTED", "PROSPECT", "NEW"].includes(s)) return "info";
   if (["DRAFT"].includes(s)) return "neutral";
