@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Link from "next/link";
 import { requirePermission, hasPermission } from "@/lib/auth/guards";
 import { PERMISSIONS } from "@/lib/rbac";
 import { prisma } from "@/lib/prisma";
