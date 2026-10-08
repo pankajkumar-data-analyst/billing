@@ -7,6 +7,7 @@ import { PERMISSIONS } from "@/lib/rbac";
 import { leaveSchema } from "@/lib/validation";
 import { writeAudit, AUDIT } from "@/lib/auth/audit";
 import { adjustUsage } from "@/lib/services/leave-balance";
+import { notifyAdmins, notifyUser } from "@/lib/services/notify";
 import { Decimal } from "decimal.js";
 
 type ActionState = { error?: string };
@@ -28,12 +29,18 @@ export async function applyLeave(_prev: ActionState, formData: FormData): Promis
   const d = parsed.data;
   if (d.toDate < d.fromDate) return { error: "End date cannot be before start date." };
 
-  await prisma.leaveRequest.create({
+  const created = await prisma.leaveRequest.create({
     data: {
       employeeId: user.employeeId, type: d.type, fromDate: d.fromDate, toDate: d.toDate,
       days: new Decimal(dayCount(d.fromDate, d.toDate)).toFixed(1), reason: d.reason, status: "PENDING",
     },
+    include: { employee: true },
   });
+  await notifyAdmins(
+    "New leave request",
+    `${created.employee.name} requested ${created.type} leave`,
+    "/leave",
+  );
   revalidatePath("/leave");
   return {};
 }
@@ -69,6 +76,12 @@ export async function decideLeave(leaveId: string, decision: "APPROVED" | "REJEC
       });
     }
   });
+
+  // Notify the employee of the decision.
+  const emp = await prisma.employee.findUnique({ where: { id: leave.employeeId }, select: { userId: true } });
+  if (emp?.userId) {
+    await notifyUser(emp.userId, `Leave ${decision.toLowerCase()}`, `Your ${leave.type} leave was ${decision.toLowerCase()}.`, "/leave");
+  }
 
   await writeAudit({ userId: admin.id, action: AUDIT.LEAVE_DECISION, entity: "LeaveRequest", entityId: leaveId, after: { decision } });
   revalidatePath("/leave");

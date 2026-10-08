@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { deriveInvoiceStatus } from "@/lib/services/invoice";
+import { notifyAdmins } from "@/lib/services/notify";
 
 /**
  * Recompute OVERDUE status for open invoices (spec §13: auto-overdue by due
@@ -25,7 +26,8 @@ export async function refreshOverdueInvoices(): Promise<void> {
       now,
     });
     if (next === "OVERDUE" && inv.status !== "OVERDUE") {
-      await prisma.invoice.update({ where: { id: inv.id }, data: { status: "OVERDUE" } });
+      const updated = await prisma.invoice.update({ where: { id: inv.id }, data: { status: "OVERDUE" }, include: { client: true } });
+      await notifyAdmins("Invoice overdue", `${updated.number} (${updated.client.name}) is now overdue.`, `/invoices/${updated.id}`);
     }
   }
 }
