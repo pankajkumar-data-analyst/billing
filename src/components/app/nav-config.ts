@@ -16,6 +16,7 @@ import {
   FolderLock,
   Settings,
   UserCircle,
+  ListTodo,
   type LucideIcon,
 } from "lucide-react";
 
@@ -45,6 +46,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Attendance", href: "/attendance", icon: CalendarClock, anyOf: [PERMISSIONS.ATTENDANCE_SELF, PERMISSIONS.ATTENDANCE_MANAGE] },
   { label: "Leave", href: "/leave", icon: CalendarOff, anyOf: [PERMISSIONS.LEAVE_SELF, PERMISSIONS.LEAVE_MANAGE] },
   { label: "Payroll", href: "/payroll", icon: Banknote, anyOf: [PERMISSIONS.PAYROLL_VIEW, PERMISSIONS.PAYSLIP_SELF_VIEW] },
+  { label: "Tasks", href: "/tasks", icon: ListTodo, anyOf: [PERMISSIONS.CANDIDATE_VIEW, PERMISSIONS.DASHBOARD_SELF_VIEW] },
   { label: "Reports", href: "/reports", icon: BarChart3, anyOf: [PERMISSIONS.REPORT_VIEW] },
   { label: "Documents", href: "/documents", icon: FolderLock, anyOf: [PERMISSIONS.DOCUMENT_VIEW] },
   { label: "Settings", href: "/settings", icon: Settings, anyOf: [PERMISSIONS.SETTINGS_MANAGE] },
