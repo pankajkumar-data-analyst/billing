@@ -18,6 +18,10 @@ function Submit() {
 export function ApplyLeaveForm() {
   const [state, formAction] = useFormState(applyLeave, {} as { error?: string });
   const today = new Date().toISOString().slice(0, 10);
+  const [duration, setDuration] = useState<"FULL" | "HALF">("FULL");
+  const [from, setFrom] = useState(today);
+
+  const isHalf = duration === "HALF";
   return (
     <form action={formAction} className="space-y-3">
       {state.error ? <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{state.error}</p> : null}
@@ -25,10 +29,25 @@ export function ApplyLeaveForm() {
         <Label htmlFor="type">Type</Label>
         <Select id="type" name="type" required>{LEAVE_TYPES.map((t) => <option key={t} value={t}>{titleCase(t)}</option>)}</Select>
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1.5"><Label htmlFor="fromDate">From</Label><Input id="fromDate" name="fromDate" type="date" defaultValue={today} required /></div>
-        <div className="space-y-1.5"><Label htmlFor="toDate">To</Label><Input id="toDate" name="toDate" type="date" defaultValue={today} required /></div>
+      <div className="space-y-1.5">
+        <Label htmlFor="duration">Duration</Label>
+        <Select id="duration" name="duration" value={duration} onChange={(e) => setDuration(e.target.value as "FULL" | "HALF")}>
+          <option value="FULL">Full Day(s)</option>
+          <option value="HALF">Half Day (0.5)</option>
+        </Select>
       </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label htmlFor="fromDate">{isHalf ? "Date" : "From"}</Label>
+          <Input id="fromDate" name="fromDate" type="date" value={from} onChange={(e) => setFrom(e.target.value)} required />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="toDate">To</Label>
+          {/* For half-day, To is forced to equal the single date. */}
+          <Input id="toDate" name="toDate" type="date" value={isHalf ? from : undefined} defaultValue={isHalf ? undefined : today} readOnly={isHalf} required />
+        </div>
+      </div>
+      {isHalf ? <p className="text-xs text-muted-foreground">Half-day counts as 0.5 day on the selected date.</p> : null}
       <div className="space-y-1.5"><Label htmlFor="reason">Reason</Label><Textarea id="reason" name="reason" /></div>
       <Submit />
     </form>

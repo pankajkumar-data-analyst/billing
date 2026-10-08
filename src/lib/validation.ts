@@ -200,6 +200,9 @@ export const leaveSchema = z.object({
   type: z.enum(["CASUAL", "SICK", "PAID", "UNPAID", "OTHER"]),
   fromDate: requiredDate,
   toDate: requiredDate,
+  // "FULL" = whole days (inclusive). "HALF" = a single half-day (0.5),
+  // only valid when fromDate === toDate.
+  duration: z.enum(["FULL", "HALF"]).default("FULL"),
   reason: optionalString,
 });
 

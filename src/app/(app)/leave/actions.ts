@@ -29,10 +29,17 @@ export async function applyLeave(_prev: ActionState, formData: FormData): Promis
   const d = parsed.data;
   if (d.toDate < d.fromDate) return { error: "End date cannot be before start date." };
 
+  // Half-day only makes sense for a single day.
+  const sameDay = d.fromDate.getTime() === d.fromDate.getTime() && dayCount(d.fromDate, d.toDate) === 1;
+  if (d.duration === "HALF" && !sameDay) {
+    return { error: "Half-day leave must have the same From and To date." };
+  }
+  const days = d.duration === "HALF" ? new Decimal("0.5") : new Decimal(dayCount(d.fromDate, d.toDate));
+
   const created = await prisma.leaveRequest.create({
     data: {
       employeeId: user.employeeId, type: d.type, fromDate: d.fromDate, toDate: d.toDate,
-      days: new Decimal(dayCount(d.fromDate, d.toDate)).toFixed(1), reason: d.reason, status: "PENDING",
+      days: days.toFixed(1), reason: d.reason, status: "PENDING",
     },
     include: { employee: true },
   });
