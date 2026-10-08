@@ -54,11 +54,26 @@ const GOLD = "#D4A017";
 const MUTED = "#777777";
 
 const s = StyleSheet.create({
-  page: { padding: 40, fontSize: 10, color: "#333", fontFamily: "NotoSans" },
+  // No horizontal page padding so the navy header band can run edge-to-edge;
+  // body sections add their own horizontal padding (bodyPad).
+  page: { paddingTop: 0, paddingBottom: 40, fontSize: 10, color: "#333", fontFamily: "NotoSans" },
+  bodyPad: { paddingHorizontal: 40 },
+  // Dark header band — the transparent logo (gold X + white text) shows clearly
+  // against navy.
+  headerBand: {
+    backgroundColor: NAVY,
+    paddingHorizontal: 40,
+    paddingVertical: 20,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 24,
+  },
   row: { flexDirection: "row", justifyContent: "space-between" },
-  headerLeft: { flexDirection: "row", alignItems: "flex-start" },
-  logoText: { marginLeft: 10 },
-  companyName: { fontSize: 16, fontWeight: "bold", color: NAVY },
+  headerLeft: { flexDirection: "row", alignItems: "center" },
+  logoText: { marginLeft: 12 },
+  companyName: { fontSize: 15, fontWeight: "bold", color: "#ffffff" },
+  companyMutedOnDark: { color: "#c9c9d4", fontSize: 8, marginTop: 1 },
   companyTag: { fontSize: 8, color: GOLD, letterSpacing: 1, marginTop: 1 },
   muted: { color: MUTED, fontSize: 9 },
   invoiceTitle: { fontSize: 22, fontWeight: "bold", color: GOLD, textAlign: "right" },
@@ -102,7 +117,7 @@ const LOGO_FILE = (() => {
  */
 function LogoMark() {
   if (LOGO_FILE) {
-    return <Image src={LOGO_FILE} style={{ width: 54, height: 54, objectFit: "contain" }} />;
+    return <Image src={LOGO_FILE} style={{ width: 60, height: 60, objectFit: "contain" }} />;
   }
   return (
     <Svg width={34} height={34} viewBox="0 0 48 48">
@@ -137,18 +152,18 @@ export function InvoicePdf({ company, invoice }: InvoicePdfData) {
   return (
     <Document title={`Invoice ${invoice.number}`}>
       <Page size="A4" style={s.page}>
-        {/* Header */}
-        <View style={s.row}>
+        {/* Dark header band — logo shows clearly on navy */}
+        <View style={s.headerBand}>
           <View style={s.headerLeft}>
             <LogoMark />
             <View style={s.logoText}>
               <Text style={s.companyName}>{nl(company.name)}</Text>
-              {company.address ? <Text style={s.muted}>{nl(company.address)}</Text> : null}
-              <Text style={s.muted}>
+              {company.address ? <Text style={s.companyMutedOnDark}>{nl(company.address)}</Text> : null}
+              <Text style={s.companyMutedOnDark}>
                 {nl([company.phone, company.email, company.website].filter(Boolean).join("  ·  "))}
               </Text>
-              {company.gstin ? <Text style={s.muted}>GSTIN: {company.gstin}</Text> : null}
-              {company.pan ? <Text style={s.muted}>PAN: {company.pan}</Text> : null}
+              {company.gstin ? <Text style={s.companyMutedOnDark}>GSTIN: {company.gstin}</Text> : null}
+              {company.pan ? <Text style={s.companyMutedOnDark}>PAN: {company.pan}</Text> : null}
             </View>
           </View>
           <View>
@@ -156,6 +171,9 @@ export function InvoicePdf({ company, invoice }: InvoicePdfData) {
             <Text style={s.statusBadge}>{invoice.status.replace("_", " ")}</Text>
           </View>
         </View>
+
+        {/* Body (padded, since the page no longer has horizontal padding) */}
+        <View style={s.bodyPad}>
 
         {/* Meta */}
         <View style={[s.row, s.section]}>
@@ -233,6 +251,7 @@ export function InvoicePdf({ company, invoice }: InvoicePdfData) {
           ) : null}
           {invoice.notes ? <Text style={{ marginTop: 8 }}>{nl(invoice.notes)}</Text> : null}
         </View>
+        </View>{/* end bodyPad */}
 
         <Text style={s.footer}>{nl(invoice.footer)}</Text>
       </Page>
