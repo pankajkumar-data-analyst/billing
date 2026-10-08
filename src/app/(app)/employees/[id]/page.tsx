@@ -1,10 +1,12 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { requirePermission, hasPermission } from "@/lib/auth/guards";
 import { PERMISSIONS } from "@/lib/rbac";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/app/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge, statusTone } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
 import { formatINR } from "@/lib/money";
 import { formatDate } from "@/lib/utils";
 import { titleCase } from "@/lib/labels";
@@ -14,6 +16,7 @@ export const dynamic = "force-dynamic";
 export default async function EmployeeDetailPage({ params }: { params: { id: string } }) {
   const user = await requirePermission(PERMISSIONS.EMPLOYEE_VIEW);
   const canSeeSalary = hasPermission(user, PERMISSIONS.SALARY_VIEW);
+  const canManage = hasPermission(user, PERMISSIONS.EMPLOYEE_MANAGE);
 
   const emp = await prisma.employee.findUnique({
     where: { id: params.id },
@@ -35,7 +38,11 @@ export default async function EmployeeDetailPage({ params }: { params: { id: str
 
   return (
     <div>
-      <PageHeader title={emp.name} subtitle={emp.designation ?? undefined} />
+      <PageHeader
+        title={emp.name}
+        subtitle={emp.designation ?? undefined}
+        action={canManage ? <Link href={`/employees/${emp.id}/edit`} className={buttonVariants({ variant: "outline" })}>Edit</Link> : null}
+      />
       <div className="mb-4"><Badge tone={statusTone(emp.status)}>{titleCase(emp.status)}</Badge></div>
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
