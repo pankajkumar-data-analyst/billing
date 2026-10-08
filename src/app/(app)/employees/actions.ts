@@ -143,9 +143,3 @@ export async function updateEmployee(id: string, _prev: ActionState, formData: F
   revalidatePath(`/employees/${id}`);
   redirect(`/employees/${id}`);
 }
-
-function flatten(error: import("zod").ZodError): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const i of error.issues) if (!out[i.path.join(".")]) out[i.path.join(".")] = i.message;
-  return out;
-}
