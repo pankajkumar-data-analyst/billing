@@ -31,7 +31,14 @@ export default async function PlacementsPage() {
       <PageHeader
         title="Placements"
         subtitle="Successful joinings — the link between recruitment and billing."
-        action={canManage ? <Link href="/placements/new" className={buttonVariants({ variant: "gold" })}><Plus className="h-4 w-4" /> New Placement</Link> : null}
+        action={
+          <div className="flex gap-2">
+            {hasPermission(user, PERMISSIONS.REPORT_EXPORT_FINANCIAL) ? (
+              <Link href="/api/export/placements" className={buttonVariants({ variant: "outline" })}>Export CSV</Link>
+            ) : null}
+            {canManage ? <Link href="/placements/new" className={buttonVariants({ variant: "gold" })}><Plus className="h-4 w-4" /> New Placement</Link> : null}
+          </div>
+        }
       />
       <Card>
         <Table>

@@ -38,7 +38,14 @@ export default async function InvoicesPage({ searchParams }: { searchParams: { s
       <PageHeader
         title="Invoices"
         subtitle="All recruitment invoices and their payment status."
-        action={canCreate ? <Link href="/invoices/new" className={buttonVariants({ variant: "gold" })}>New Invoice</Link> : null}
+        action={
+          <div className="flex gap-2">
+            {hasPermission(user, PERMISSIONS.REPORT_EXPORT_FINANCIAL) ? (
+              <Link href="/api/export/invoices" className={buttonVariants({ variant: "outline" })}>Export CSV</Link>
+            ) : null}
+            {canCreate ? <Link href="/invoices/new" className={buttonVariants({ variant: "gold" })}>New Invoice</Link> : null}
+          </div>
+        }
       />
 
       <div className="mb-6 grid gap-4 sm:grid-cols-4">

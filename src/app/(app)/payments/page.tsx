@@ -1,11 +1,13 @@
 import Link from "next/link";
-import { requirePermission } from "@/lib/auth/guards";
+import Link from "next/link";
+import { requirePermission, hasPermission } from "@/lib/auth/guards";
 import { PERMISSIONS } from "@/lib/rbac";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/app/page-header";
 import { Card } from "@/components/ui/card";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
 import { formatINR, sum } from "@/lib/money";
 import { formatDate } from "@/lib/utils";
 import { titleCase } from "@/lib/labels";
@@ -13,7 +15,7 @@ import { titleCase } from "@/lib/labels";
 export const dynamic = "force-dynamic";
 
 export default async function PaymentsPage() {
-  await requirePermission(PERMISSIONS.PAYMENT_VIEW);
+  const user = await requirePermission(PERMISSIONS.PAYMENT_VIEW);
   const payments = await prisma.payment.findMany({
     include: { invoice: true, client: true, recordedBy: { include: { employee: true } } },
     orderBy: { paymentDate: "desc" },
@@ -23,7 +25,11 @@ export default async function PaymentsPage() {
 
   return (
     <div>
-      <PageHeader title="Payments / Receivables" subtitle={`Total received: ${formatINR(totalReceived)}`} />
+      <PageHeader
+        title="Payments / Receivables"
+        subtitle={`Total received: ${formatINR(totalReceived)}`}
+        action={hasPermission(user, PERMISSIONS.REPORT_EXPORT_FINANCIAL) ? <Link href="/api/export/payments" className={buttonVariants({ variant: "outline" })}>Export CSV</Link> : null}
+      />
       <Card>
         <Table>
           <THead>

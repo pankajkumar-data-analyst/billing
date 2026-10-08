@@ -1,4 +1,5 @@
-import { requirePermission } from "@/lib/auth/guards";
+import Link from "next/link";
+import { requirePermission, hasPermission } from "@/lib/auth/guards";
 import { PERMISSIONS } from "@/lib/rbac";
 import { getAdminDashboard, getRevenueByClient } from "@/lib/services/dashboard";
 import { prisma } from "@/lib/prisma";
@@ -6,16 +7,17 @@ import { PageHeader } from "@/components/app/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { KpiCard } from "@/components/app/kpi-card";
+import { buttonVariants } from "@/components/ui/button";
 import { formatINR, formatINRCompact } from "@/lib/money";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Finance/Revenue report (spec §22). Admin-only. Financial CSV export is a
- * documented Phase-2 item; this page gives the key figures on screen.
+ * Finance/Revenue report (spec §22). Admin-only, with CSV export.
  */
 export default async function ReportsPage() {
-  await requirePermission(PERMISSIONS.REPORT_VIEW);
+  const user = await requirePermission(PERMISSIONS.REPORT_VIEW);
+  const canExport = hasPermission(user, PERMISSIONS.REPORT_EXPORT_FINANCIAL);
   const [{ kpis }, byClient, placementStats] = await Promise.all([
     getAdminDashboard(),
     getRevenueByClient(10),
@@ -24,7 +26,19 @@ export default async function ReportsPage() {
 
   return (
     <div>
-      <PageHeader title="Revenue & Finance Report" subtitle="Billing, collections and profitability overview." />
+      <PageHeader
+        title="Revenue & Finance Report"
+        subtitle="Billing, collections and profitability overview."
+        action={
+          canExport ? (
+            <div className="flex flex-wrap gap-2">
+              <Link href="/api/export/invoices" className={buttonVariants({ variant: "outline", size: "sm" })}>Invoices CSV</Link>
+              <Link href="/api/export/payments" className={buttonVariants({ variant: "outline", size: "sm" })}>Payments CSV</Link>
+              <Link href="/api/export/placements" className={buttonVariants({ variant: "outline", size: "sm" })}>Placements CSV</Link>
+            </div>
+          ) : null
+        }
+      />
       <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard label="Total Collected" value={formatINRCompact(kpis.totalRevenue)} tone="success" />
         <KpiCard label="Outstanding" value={formatINRCompact(kpis.pendingReceivables)} tone="warning" />
@@ -54,7 +68,7 @@ export default async function ReportsPage() {
         </CardContent>
       </Card>
       <p className="mt-4 text-xs text-muted-foreground">
-        CSV/Excel export of financial reports is a documented Phase-2 enhancement.
+        Use the Export buttons above to download CSV (opens in Excel). Admin only.
       </p>
     </div>
   );
