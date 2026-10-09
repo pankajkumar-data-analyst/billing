@@ -166,6 +166,16 @@ generation works offline with no network fetch.
 > included in the serverless bundle (they are inside `src/`, which Next traces;
 > if the font path fails on Vercel, switch `Font.register` to a hosted TTF URL).
 
+## Performance notes
+
+- The logo is served through `next/image` (auto-resized + WebP); the full-size
+  source is never shipped to the browser.
+- Overdue-invoice refresh on page loads is a single bulk `updateMany` (no
+  per-row writes / notifications); the nightly cron handles notifications.
+- The attendance page batches its reads with `Promise.all`.
+- For fastest local dev, a local Postgres avoids per-query network latency to
+  Neon.
+
 ## Security Notes
 
 - Passwords: Argon2id, strong-password policy, account lockout after repeated failures.
