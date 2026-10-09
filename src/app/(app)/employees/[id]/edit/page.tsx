@@ -4,7 +4,8 @@ import { PERMISSIONS } from "@/lib/rbac";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/app/page-header";
 import { EmployeeForm } from "../../employee-form";
-import { updateEmployee } from "../../actions";
+import { EmployeeLoginForm } from "../../employee-login-form";
+import { updateEmployee, setEmployeeLogin } from "../../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,10 @@ export default async function EditEmployeePage({ params }: { params: { id: strin
   const user = await currentUser();
   const admin = !!user && isAdmin(user);
 
-  const emp = await prisma.employee.findUnique({ where: { id: params.id } });
+  const emp = await prisma.employee.findUnique({
+    where: { id: params.id },
+    include: { user: { include: { role: true } } },
+  });
   if (!emp) notFound();
 
   const defaults = {
@@ -36,9 +40,15 @@ export default async function EditEmployeePage({ params }: { params: { id: strin
   };
 
   return (
-    <div>
+    <div className="space-y-6">
       <PageHeader title={`Edit ${emp.name}`} />
       <EmployeeForm action={updateEmployee.bind(null, emp.id)} isAdmin={admin} defaults={defaults} mode="edit" />
+      {admin ? (
+        <EmployeeLoginForm
+          action={setEmployeeLogin.bind(null, emp.id)}
+          existing={emp.user ? { email: emp.user.email, roleName: emp.user.role.name } : null}
+        />
+      ) : null}
     </div>
   );
 }

@@ -97,6 +97,83 @@ export async function createEmployee(_prev: ActionState, formData: FormData): Pr
   redirect(`/employees/${employee.id}`);
 }
 
+/**
+ * Create OR reset the login account for an existing employee (Admin only).
+ * - If the employee has no user yet: creates one (needs email + password + role).
+ * - If the employee already has a user: resets the password and (optionally)
+ *   the email/role. Password is only changed when a new one is provided.
+ * This is what lets an admin fix an account whose password no longer works
+ * (e.g. an old/incompatible hash) without touching the database directly.
+ */
+const loginSchema = z.object({
+  email: z.string().trim().email("Enter a valid email").optional().or(z.literal("").transform(() => undefined)),
+  password: z.string().optional(),
+  roleName: z.enum(["SUPER_ADMIN", "RECRUITER"]).default("RECRUITER"),
+});
+
+export async function setEmployeeLogin(employeeId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  const admin = await assertAdmin(); // only Super Admin may provision/reset logins
+  const parsed = loginSchema.safeParse(Object.fromEntries(formData.entries()));
+  if (!parsed.success) return { error: "Please fix the highlighted fields.", fieldErrors: flatten(parsed.error) };
+  const d = parsed.data;
+
+  const emp = await prisma.employee.findUnique({ where: { id: employeeId }, include: { user: true } });
+  if (!emp) return { error: "Employee not found." };
+
+  const role = await prisma.role.findUnique({ where: { name: d.roleName } });
+  if (!role) return { error: "Selected role does not exist." };
+
+  if (emp.user) {
+    // --- RESET existing login ---
+    const data: { email?: string; roleId?: string; passwordHash?: string } = { roleId: role.id };
+
+    if (d.email && d.email.toLowerCase() !== emp.user.email) {
+      const taken = await prisma.user.findUnique({ where: { email: d.email.toLowerCase() }, select: { id: true } });
+      if (taken) return { error: "That email is already in use by another user.", fieldErrors: { email: "Email in use" } };
+      data.email = d.email.toLowerCase();
+    }
+    if (d.password) {
+      const pwdError = validatePasswordStrength(d.password);
+      if (pwdError) return { error: pwdError, fieldErrors: { password: pwdError } };
+      data.passwordHash = await hashPassword(d.password);
+    }
+
+    try {
+      await prisma.user.update({ where: { id: emp.user.id }, data });
+    } catch (err) {
+      const msg = uniqueConstraintMessage(err);
+      if (msg) return { error: msg };
+      throw err;
+    }
+    await writeAudit({ userId: admin.id, action: AUDIT.USER_UPDATE, entity: "User", entityId: emp.user.id, after: { passwordReset: !!d.password, role: d.roleName } });
+  } else {
+    // --- CREATE new login ---
+    if (!d.email) return { error: "Email is required to create a login.", fieldErrors: { email: "Required" } };
+    const pwdError = d.password ? validatePasswordStrength(d.password) : "Password is required to create a login.";
+    if (pwdError) return { error: pwdError, fieldErrors: { password: pwdError } };
+    const existing = await prisma.user.findUnique({ where: { email: d.email.toLowerCase() }, select: { id: true } });
+    if (existing) return { error: "A user with that email already exists.", fieldErrors: { email: "Email in use" } };
+
+    try {
+      // The relation is owned by Employee (Employee.userId), so create the User
+      // and link it from the employee side in one transaction.
+      const newUser = await prisma.user.create({
+        data: { email: d.email.toLowerCase(), passwordHash: await hashPassword(d.password!), roleId: role.id },
+      });
+      await prisma.employee.update({ where: { id: emp.id }, data: { userId: newUser.id } });
+    } catch (err) {
+      const msg = uniqueConstraintMessage(err);
+      if (msg) return { error: msg };
+      throw err;
+    }
+    await writeAudit({ userId: admin.id, action: AUDIT.USER_CREATE, entity: "User", entityId: emp.id, after: { loginCreated: true, email: d.email.toLowerCase(), role: d.roleName } });
+  }
+
+  revalidatePath(`/employees/${employeeId}`);
+  revalidatePath(`/employees/${employeeId}/edit`);
+  redirect(`/employees/${employeeId}`);
+}
+
 /** Turn a Prisma P2002 (unique constraint) into a friendly message, else null. */
 function uniqueConstraintMessage(err: unknown): string | null {
   if (err && typeof err === "object" && (err as { code?: string }).code === "P2002") {
