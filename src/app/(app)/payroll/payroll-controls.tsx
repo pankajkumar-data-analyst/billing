@@ -1,10 +1,11 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
-import { generatePayroll, approvePayslip, markPayslipPaid } from "./actions";
+import { Input } from "@/components/ui/input";
+import { generatePayroll, approvePayslip, markPayslipPaid, setBonusDeductions } from "./actions";
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
@@ -57,4 +58,34 @@ export function PayslipActions({ id, status }: { id: string; status: string }) {
   if (status === "DRAFT") return <Button size="sm" variant="default" disabled={pending} onClick={() => start(() => approvePayslip(id))}>Approve</Button>;
   if (status === "APPROVED") return <Button size="sm" variant="gold" disabled={pending} onClick={() => start(() => markPayslipPaid(id))}>Mark Paid</Button>;
   return null;
+}
+
+/** Inline bonus/deductions editor for a DRAFT payslip. */
+export function BonusEditor({ id, bonus, deductions }: { id: string; bonus: string; deductions: string }) {
+  const [open, setOpen] = useState(false);
+  const action = setBonusDeductions.bind(null, id);
+  const [state, formAction] = useFormState(action, {} as { error?: string; ok?: boolean });
+
+  if (!open) {
+    return (
+      <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+        {Number(bonus) > 0 || Number(deductions) > 0 ? "Edit Bonus/Ded." : "Add Bonus"}
+      </Button>
+    );
+  }
+  return (
+    <form action={formAction} className="flex flex-wrap items-end gap-2">
+      <div>
+        <label className="block text-[10px] text-muted-foreground">Bonus ₹</label>
+        <Input name="bonus" type="number" step="0.01" defaultValue={bonus} className="h-8 w-24" />
+      </div>
+      <div>
+        <label className="block text-[10px] text-muted-foreground">Deductions ₹</label>
+        <Input name="deductions" type="number" step="0.01" defaultValue={deductions} className="h-8 w-24" />
+      </div>
+      <Button size="sm" variant="gold" type="submit">Save</Button>
+      <Button size="sm" variant="ghost" type="button" onClick={() => setOpen(false)}>×</Button>
+      {state.error ? <span className="text-xs text-red-600">{state.error}</span> : null}
+    </form>
+  );
 }

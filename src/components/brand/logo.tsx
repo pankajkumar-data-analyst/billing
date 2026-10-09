@@ -43,14 +43,14 @@ export function Logo({
     );
   }
 
+  // Clean text wordmark (used while a final logo image is pending).
   return (
-    <span className={cn("inline-flex items-center gap-2 font-semibold", className)}>
-      <svg viewBox="0 0 48 48" className="h-7 w-7" aria-hidden>
-        <rect x="4" y="20" width="40" height="8" rx="2" fill="#F4C430" transform="rotate(-35 24 24)" />
-        <rect x="4" y="20" width="40" height="8" rx="2" fill="#F4C430" transform="rotate(35 24 24)" />
-      </svg>
-      <span className={cn("leading-tight", dark ? "text-white" : "text-navy")}>
-        One2<span className="text-gold-dark">Infinite</span>
+    <span className={cn("inline-flex flex-col leading-tight", className)}>
+      <span className={cn("text-lg font-bold tracking-tight", dark ? "text-white" : "text-navy")}>
+        One2<span className="text-gold">Infinite</span>
+      </span>
+      <span className={cn("text-[10px] font-medium uppercase tracking-widest", dark ? "text-white/60" : "text-muted-foreground")}>
+        Recruitment Solutions
       </span>
     </span>
   );

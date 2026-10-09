@@ -9,7 +9,7 @@ import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { Badge, statusTone } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { formatINR } from "@/lib/money";
-import { GeneratePayroll, PayslipActions } from "./payroll-controls";
+import { GeneratePayroll, PayslipActions, BonusEditor } from "./payroll-controls";
 
 export const dynamic = "force-dynamic";
 
@@ -48,22 +48,25 @@ export default async function PayrollPage({ searchParams }: { searchParams: { y?
 
         <Card>
           <Table>
-            <THead><TR><TH>Employee</TH><TH>Working</TH><TH>Present</TH><TH>LOP</TH><TH>Gross</TH><TH>Net</TH><TH>Status</TH><TH></TH></TR></THead>
+            <THead><TR><TH>Employee</TH><TH>Working</TH><TH>Present</TH><TH>Extra</TH><TH>LOP</TH><TH>Gross</TH><TH>Bonus</TH><TH>Net</TH><TH>Status</TH><TH></TH></TR></THead>
             <TBody>
               {slips.length === 0 ? (
-                <TR><TD colSpan={8} className="py-10 text-center text-muted-foreground">No payslips for this period. Click Generate Payroll.</TD></TR>
+                <TR><TD colSpan={10} className="py-10 text-center text-muted-foreground">No payslips for this period. Click Generate Payroll.</TD></TR>
               ) : (
                 slips.map((s) => (
                   <TR key={s.id}>
                     <TD className="font-medium">{s.employee.name}</TD>
                     <TD>{s.workingDays}</TD>
                     <TD>{s.presentDays.toString()}</TD>
+                    <TD>{Number(s.extraDays) > 0 ? <span className="text-green-700">+{s.extraDays.toString()}</span> : "-"}</TD>
                     <TD>{s.lopDays.toString()}</TD>
                     <TD>{formatINR(s.grossSalary)}</TD>
+                    <TD>{Number(s.bonus) > 0 ? <span className="text-green-700">{formatINR(s.bonus)}</span> : "-"}</TD>
                     <TD className="font-semibold">{formatINR(s.netSalary)}</TD>
                     <TD><Badge tone={statusTone(s.status)}>{s.status}</Badge></TD>
                     <TD>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        {s.status === "DRAFT" ? <BonusEditor id={s.id} bonus={s.bonus.toString()} deductions={s.deductions.toString()} /> : null}
                         <PayslipActions id={s.id} status={s.status} />
                         <Link href={`/payroll/${s.id}/pdf`} target="_blank" className={buttonVariants({ variant: "outline", size: "sm" })}>
                           Payslip

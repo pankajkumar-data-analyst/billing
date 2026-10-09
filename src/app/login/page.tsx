@@ -50,10 +50,7 @@ export default function LoginPage() {
     <main className="flex min-h-screen items-center justify-center bg-secondary px-4">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex justify-center">
-          {/* Logo has a black background, so present it inside a navy tile. */}
-          <div className="rounded-xl bg-navy p-4">
-            <Logo variant="image" size={128} className="mx-auto h-28" />
-          </div>
+          <Logo className="items-center text-center" />
         </div>
         <Card>
           <CardContent className="pt-6">

@@ -7,7 +7,7 @@ import { PERMISSIONS } from "@/lib/rbac";
 import { getSettings } from "@/lib/services/settings";
 import { calculatePayroll } from "@/lib/services/payroll";
 import { workingDaysInMonth, dayValueForStatus } from "@/lib/services/attendance";
-import { workingDayHolidayCount } from "@/lib/services/holidays";
+import { workingDayHolidayCount, holidaysInMonth } from "@/lib/services/holidays";
 import { toDbString } from "@/lib/money";
 import { writeAudit, AUDIT } from "@/lib/auth/audit";
 import { Decimal } from "decimal.js";
@@ -51,15 +51,35 @@ export async function generatePayroll(
     };
   }
 
-  for (const emp of employees) {
-    const attendance = await prisma.attendance.findMany({
-      where: { employeeId: emp.id, date: { gte: monthStart, lte: monthEnd } },
-    });
-    const presentDays = attendance.reduce<Decimal>((acc, a) => acc.plus(dayValueForStatus(a.status)), new Decimal(0));
+  // Precompute weekend + holiday day numbers for the month so we can tell
+  // whether an attendance record was on a normal working day or an off day.
+  const DAY_ABBR = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const offSet = new Set(weeklyOff);
+  const holidayMap = await holidaysInMonth(year, month); // key: yyyy-mm-dd
+  const isOffDay = (d: Date): boolean => {
+    const dow = DAY_ABBR[d.getDay()];
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    return offSet.has(dow) || holidayMap.has(key);
+  };
 
-    const leaves = await prisma.leaveRequest.findMany({
-      where: { employeeId: emp.id, status: "APPROVED", fromDate: { lte: monthEnd }, toDate: { gte: monthStart } },
-    });
+  for (const emp of employees) {
+    const [attendance, leaves, existing] = await Promise.all([
+      prisma.attendance.findMany({ where: { employeeId: emp.id, date: { gte: monthStart, lte: monthEnd } } }),
+      prisma.leaveRequest.findMany({ where: { employeeId: emp.id, status: "APPROVED", fromDate: { lte: monthEnd }, toDate: { gte: monthStart } } }),
+      prisma.payslip.findUnique({ where: { employeeId_periodYear_periodMonth: { employeeId: emp.id, periodYear: year, periodMonth: month } } }),
+    ]);
+
+    // Split attendance: work on a normal day counts toward presentDays; work on
+    // a weekend/holiday counts as EXTRA (paid on top).
+    let presentDays = new Decimal(0);
+    let extraDays = new Decimal(0);
+    for (const a of attendance) {
+      const value = dayValueForStatus(a.status); // 1, 0.5 or 0
+      if (value.isZero()) continue;
+      if (isOffDay(a.date)) extraDays = extraDays.plus(value);
+      else presentDays = presentDays.plus(value);
+    }
+
     let paidLeave = new Decimal(0);
     let unpaidLeave = new Decimal(0);
     for (const l of leaves) {
@@ -67,39 +87,38 @@ export async function generatePayroll(
       else paidLeave = paidLeave.plus(l.days);
     }
 
+    // Preserve any bonus/deductions an admin set on an existing DRAFT slip.
     const result = calculatePayroll({
       monthlySalary: emp.monthlySalary!,
       workingDays,
       presentDays,
+      extraDays,
       paidLeaveDays: paidLeave,
       unpaidLeaveDays: unpaidLeave,
+      bonus: existing?.bonus ?? 0,
+      deductions: existing?.deductions ?? 0,
     });
+
+    const data = {
+      workingDays: result.workingDays,
+      presentDays: toDbString(result.presentDays),
+      extraDays: toDbString(result.extraDays),
+      paidLeave: toDbString(result.paidLeave),
+      unpaidLeave: toDbString(result.unpaidLeave),
+      lopDays: toDbString(result.lopDays),
+      grossSalary: toDbString(result.grossSalary),
+      lopAmount: toDbString(result.lopAmount),
+      extraPay: toDbString(result.extraPay),
+      bonus: toDbString(result.bonus),
+      deductions: toDbString(result.deductions),
+      netSalary: toDbString(result.netSalary),
+    };
 
     await prisma.payslip.upsert({
       where: { employeeId_periodYear_periodMonth: { employeeId: emp.id, periodYear: year, periodMonth: month } },
       // Only overwrite while still DRAFT — never silently change an APPROVED/PAID slip.
-      update: {
-        workingDays: result.workingDays,
-        presentDays: toDbString(result.presentDays),
-        paidLeave: toDbString(result.paidLeave),
-        unpaidLeave: toDbString(result.unpaidLeave),
-        lopDays: toDbString(result.lopDays),
-        grossSalary: toDbString(result.grossSalary),
-        lopAmount: toDbString(result.lopAmount),
-        netSalary: toDbString(result.netSalary),
-      },
-      create: {
-        employeeId: emp.id, periodYear: year, periodMonth: month,
-        workingDays: result.workingDays,
-        presentDays: toDbString(result.presentDays),
-        paidLeave: toDbString(result.paidLeave),
-        unpaidLeave: toDbString(result.unpaidLeave),
-        lopDays: toDbString(result.lopDays),
-        grossSalary: toDbString(result.grossSalary),
-        lopAmount: toDbString(result.lopAmount),
-        netSalary: toDbString(result.netSalary),
-        status: "DRAFT",
-      },
+      update: existing && existing.status !== "DRAFT" ? {} : data,
+      create: { employeeId: emp.id, periodYear: year, periodMonth: month, ...data, status: "DRAFT" },
     });
   }
 
@@ -124,4 +143,41 @@ export async function markPayslipPaid(payslipId: string): Promise<void> {
   await prisma.payslip.update({ where: { id: payslipId }, data: { status: "PAID" } });
   await writeAudit({ userId: admin.id, action: AUDIT.PAYROLL_PAID, entity: "Payslip", entityId: payslipId });
   revalidatePath("/payroll");
+}
+
+/**
+ * Admin sets a manual bonus and/or deductions on a DRAFT payslip and the net
+ * is recomputed. Only DRAFT slips can be edited (APPROVED/PAID are locked).
+ */
+export async function setBonusDeductions(payslipId: string, _prev: { error?: string; ok?: boolean } | undefined, formData: FormData): Promise<{ error?: string; ok?: boolean }> {
+  const admin = await assertPermission(PERMISSIONS.PAYROLL_PROCESS);
+  const bonus = Number(formData.get("bonus") ?? 0);
+  const deductions = Number(formData.get("deductions") ?? 0);
+  if (Number.isNaN(bonus) || Number.isNaN(deductions) || bonus < 0 || deductions < 0) {
+    return { error: "Bonus and deductions must be zero or more." };
+  }
+
+  const slip = await prisma.payslip.findUnique({ where: { id: payslipId }, include: { employee: true } });
+  if (!slip) return { error: "Payslip not found." };
+  if (slip.status !== "DRAFT") return { error: "Only DRAFT payslips can be edited. Already approved/paid." };
+
+  // Recompute using the stored day counts so net stays consistent.
+  const result = calculatePayroll({
+    monthlySalary: slip.grossSalary,
+    workingDays: slip.workingDays,
+    presentDays: slip.presentDays,
+    extraDays: slip.extraDays,
+    paidLeaveDays: slip.paidLeave,
+    unpaidLeaveDays: slip.unpaidLeave,
+    bonus,
+    deductions,
+  });
+
+  await prisma.payslip.update({
+    where: { id: payslipId },
+    data: { bonus: toDbString(result.bonus), deductions: toDbString(result.deductions), netSalary: toDbString(result.netSalary) },
+  });
+  await writeAudit({ userId: admin.id, action: AUDIT.PAYROLL_GENERATE, entity: "Payslip", entityId: payslipId, after: { bonus, deductions } });
+  revalidatePath("/payroll");
+  return { ok: true };
 }

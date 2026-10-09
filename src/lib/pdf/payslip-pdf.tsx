@@ -45,11 +45,13 @@ export interface PayslipPdfData {
     designation?: string | null;
     workingDays: number;
     presentDays: string;
+    extraDays: string;
     paidLeave: string;
     unpaidLeave: string;
     lopDays: string;
     grossSalary: string;
     lopAmount: string;
+    extraPay: string;
     bonus: string;
     deductions: string;
     netSalary: string;
@@ -103,31 +105,39 @@ export function PayslipPdf({ company, payslip, footer }: PayslipPdfData) {
           <View style={s.attendanceRow}>
             <View style={s.attItem}><Text style={s.attNum}>{payslip.workingDays}</Text><Text style={s.attLabel}>Working</Text></View>
             <View style={s.attItem}><Text style={s.attNum}>{payslip.presentDays}</Text><Text style={s.attLabel}>Present</Text></View>
+            <View style={s.attItem}><Text style={s.attNum}>{payslip.extraDays}</Text><Text style={s.attLabel}>Extra Days</Text></View>
             <View style={s.attItem}><Text style={s.attNum}>{payslip.paidLeave}</Text><Text style={s.attLabel}>Paid Leave</Text></View>
             <View style={s.attItem}><Text style={s.attNum}>{payslip.lopDays}</Text><Text style={s.attLabel}>LOP Days</Text></View>
           </View>
 
-          {/* Earnings / Deductions */}
-          <View style={s.twoCol}>
-            <View style={s.col}>
-              <Text style={s.colHeader}>Earnings</Text>
-              <View style={s.lineRow}><Text style={s.lineLabel}>Salary (Gross)</Text><Text style={s.lineAmt}>{formatINR(payslip.grossSalary)}</Text></View>
-              <View style={s.lineRow}><Text style={s.lineLabel}>Bonus</Text><Text style={s.lineAmt}>{formatINR(payslip.bonus)}</Text></View>
-              <View style={s.subtotal}>
-                <Text>Total Earnings</Text>
-                <Text>{formatINR(Number(payslip.grossSalary) + Number(payslip.bonus))}</Text>
+          {/* Earnings / Deductions. Earned base = gross - LOP. */}
+          {(() => {
+            const earnedBase = Number(payslip.grossSalary) - Number(payslip.lopAmount);
+            const totalEarnings = earnedBase + Number(payslip.extraPay) + Number(payslip.bonus);
+            return (
+              <View style={s.twoCol}>
+                <View style={s.col}>
+                  <Text style={s.colHeader}>Earnings</Text>
+                  <View style={s.lineRow}><Text style={s.lineLabel}>Earned Salary ({payslip.presentDays}/{payslip.workingDays} days)</Text><Text style={s.lineAmt}>{formatINR(earnedBase)}</Text></View>
+                  <View style={s.lineRow}><Text style={s.lineLabel}>Extra / Weekend-Holiday ({payslip.extraDays} days)</Text><Text style={s.lineAmt}>{formatINR(payslip.extraPay)}</Text></View>
+                  <View style={s.lineRow}><Text style={s.lineLabel}>Bonus</Text><Text style={s.lineAmt}>{formatINR(payslip.bonus)}</Text></View>
+                  <View style={s.subtotal}>
+                    <Text>Total Earnings</Text>
+                    <Text>{formatINR(totalEarnings)}</Text>
+                  </View>
+                </View>
+                <View style={s.col}>
+                  <Text style={s.colHeader}>Deductions</Text>
+                  <View style={s.lineRow}><Text style={s.lineLabel}>Loss of Pay ({payslip.lopDays} days)</Text><Text style={s.lineAmt}>{formatINR(payslip.lopAmount)}</Text></View>
+                  <View style={s.lineRow}><Text style={s.lineLabel}>Other Deductions</Text><Text style={s.lineAmt}>{formatINR(payslip.deductions)}</Text></View>
+                  <View style={s.subtotal}>
+                    <Text>Total Deductions</Text>
+                    <Text>{formatINR(payslip.deductions)}</Text>
+                  </View>
+                </View>
               </View>
-            </View>
-            <View style={s.col}>
-              <Text style={s.colHeader}>Deductions</Text>
-              <View style={s.lineRow}><Text style={s.lineLabel}>Loss of Pay ({payslip.lopDays} days)</Text><Text style={s.lineAmt}>{formatINR(payslip.lopAmount)}</Text></View>
-              <View style={s.lineRow}><Text style={s.lineLabel}>Other Deductions</Text><Text style={s.lineAmt}>{formatINR(payslip.deductions)}</Text></View>
-              <View style={s.subtotal}>
-                <Text>Total Deductions</Text>
-                <Text>{formatINR(Number(payslip.lopAmount) + Number(payslip.deductions))}</Text>
-              </View>
-            </View>
-          </View>
+            );
+          })()}
 
           {/* Net pay */}
           <View style={s.netBox}>
