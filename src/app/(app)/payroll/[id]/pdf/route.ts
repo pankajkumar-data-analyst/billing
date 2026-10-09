@@ -61,7 +61,8 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
         netSalary: payslip.netSalary.toString(),
         note: payslip.note,
       },
-      footer: settings.invoiceFooter ?? "Thank you.",
+      // Payslip-specific footer (not the invoice "thank you for your business").
+      footer: `${settings.companyName} - Confidential. For queries, contact HR/Admin.`,
     }),
   );
 

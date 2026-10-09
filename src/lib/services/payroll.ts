@@ -43,16 +43,23 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
   const bonus = money(input.bonus ?? 0);
   const deductions = money(input.deductions ?? 0);
 
-  // Days accounted as paid = present + paid leave. The rest of the month's
-  // working days are Loss of Pay.
-  const paidDays = present.plus(paidLeave);
+  // Days accounted as paid = present + paid leave (capped at working days).
+  // The rest of the month's working days are Loss of Pay.
+  let paidDays = present.plus(paidLeave);
+  if (paidDays.greaterThan(workingDays)) paidDays = new Decimal(workingDays);
   let lopDays = new Decimal(workingDays).minus(paidDays);
   if (lopDays.isNegative()) lopDays = new Decimal(0);
 
   const perDay = gross.dividedBy(workingDays).toDecimalPlaces(2);
-  const lopAmount = multiply(perDay, lopDays);
 
-  const net = add(subtract(subtract(gross, lopAmount), deductions), bonus);
+  // Compute LOP as (gross - earned) rather than (perDay * lopDays), so rounding
+  // can never make LOP exceed gross. Earned pay is proportional to paid days;
+  // if there are zero paid days, earned = 0 and LOP = gross exactly.
+  const earned = money(gross.times(paidDays).dividedBy(workingDays));
+  let lopAmount = subtract(gross, earned);
+  if (lopAmount.isNegative()) lopAmount = new Decimal(0);
+
+  const net = add(subtract(earned, deductions), bonus);
 
   return {
     workingDays,
