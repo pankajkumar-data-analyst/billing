@@ -14,7 +14,7 @@ export async function getAdminDashboard() {
 
   const [invoices, payments, placements, clients, jobs, pipeline, employees, attendanceToday, expensesMonth, payslipsMonth] =
     await Promise.all([
-      prisma.invoice.findMany({ where: { status: { not: "CANCELLED" } }, select: { total: true, amountPaid: true, status: true, invoiceDate: true } }),
+      prisma.invoice.findMany({ select: { total: true, amountPaid: true, status: true, invoiceDate: true } }),
       prisma.payment.findMany({ where: { isReversed: false }, select: { amount: true, paymentDate: true } }),
       prisma.placement.findMany({ select: { calculatedFee: true, joiningDate: true } }),
       prisma.client.count({ where: { status: "ACTIVE" } }),
@@ -26,14 +26,16 @@ export async function getAdminDashboard() {
       prisma.payslip.findMany({ where: { periodYear: now.getFullYear(), periodMonth: now.getMonth() + 1 }, select: { netSalary: true } }),
     ]);
 
-  const totalBilled = sum(invoices.map((i) => i.total));
+  // Financial sums exclude CANCELLED invoices; the status pie uses all.
+  const liveInvoices = invoices.filter((i) => i.status !== "CANCELLED");
+  const totalBilled = sum(liveInvoices.map((i) => i.total));
   const totalCollected = sum(payments.map((p) => p.amount));
-  const outstanding = subtract(totalBilled, sum(invoices.map((i) => i.amountPaid)));
-  const overdue = sum(invoices.filter((i) => i.status === "OVERDUE").map((i) => subtract(i.total, i.amountPaid)));
+  const outstanding = subtract(totalBilled, sum(liveInvoices.map((i) => i.amountPaid)));
+  const overdue = sum(liveInvoices.filter((i) => i.status === "OVERDUE").map((i) => subtract(i.total, i.amountPaid)));
   const revenueThisMonth = sum(payments.filter((p) => p.paymentDate >= monthStart).map((p) => p.amount));
   const revenueThisYear = sum(payments.filter((p) => p.paymentDate >= yearStart).map((p) => p.amount));
 
-  const paidInvoices = invoices.filter((i) => i.status === "PAID").length;
+  const paidInvoices = liveInvoices.filter((i) => i.status === "PAID").length;
   const placementsThisMonth = placements.filter((p) => p.joiningDate >= monthStart).length;
 
   const present = attendanceToday.filter((a) => ["PRESENT", "LATE", "HALF_DAY"].includes(a.status)).length;
@@ -54,9 +56,8 @@ export async function getAdminDashboard() {
     trend.push({ label: d.toLocaleString("en-IN", { month: "short" }), value: v.toNumber() });
   }
 
-  const invoiceStatusCounts = countBy(
-    (await prisma.invoice.findMany({ select: { status: true } })).map((i) => i.status),
-  );
+  // Derived from the invoices already fetched above — no extra query.
+  const invoiceStatusCounts = countBy(invoices.map((i) => i.status));
   const pipelineCounts = pipeline.map((p) => ({ stage: p.stage, count: p._count }));
 
   return {
@@ -66,7 +67,7 @@ export async function getAdminDashboard() {
       revenueThisYear,
       pendingReceivables: outstanding,
       overduePayments: overdue,
-      totalInvoices: invoices.length,
+      totalInvoices: liveInvoices.length,
       paidInvoices,
       activeClients: clients,
       activeJobs: jobs,

@@ -1,40 +1,43 @@
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 /**
  * One2Infinite brand logo.
  *
  * The real logo is a TRANSPARENT PNG the owner provided
- * (public/"One2infinite logo-600kb.png"), so it works on both dark and light
- * surfaces. Note: the logo's wordmark text ("ONE2INFINITE") is white, so on a
- * light background only the gold "X" mark is clearly visible — which still
- * looks clean.
+ * (public/"One2infinite logo-600kb.png"). It is served through next/image so
+ * Next resizes/compresses it to the actual display size and modern format
+ * (WebP) on demand — the full 600KB/1254px source is never shipped to the
+ * browser. Default variant is "image" so the real logo is always used.
  *
  * `variant`:
- *   - "image"    → the actual logo image
+ *   - "image"    → the actual logo image (optimized via next/image)
  *   - "wordmark" → the gold "X" + "One2Infinite" text fallback
  */
 
 // Transparent PNG logo. The file name contains a space, so it must be
-// URL-encoded for use as an <img> src.
+// URL-encoded for use as a src.
 export const LOGO_SRC = "/One2infinite%20logo-600kb.png";
 
 export function Logo({
   className,
   dark = false,
-  variant = "wordmark",
+  variant = "image",
+  size = 112,
 }: {
   className?: string;
   dark?: boolean;
   variant?: "image" | "wordmark";
+  size?: number;
 }) {
   if (variant === "image") {
     return (
-      // Plain <img> (not next/image) so it works for a file with spaces in the
-      // name without extra config. The logo already contains the company name.
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
+      <Image
         src={LOGO_SRC}
         alt="One2Infinite Recruitment Solutions"
+        width={size}
+        height={size}
+        priority
         className={cn("h-auto w-auto object-contain", className)}
       />
     );

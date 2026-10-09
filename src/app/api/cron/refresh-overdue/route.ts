@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { refreshOverdueInvoices } from "@/lib/services/invoice-refresh";
+import { refreshOverdueInvoicesAndNotify } from "@/lib/services/invoice-refresh";
 
 /**
  * Nightly cron (Vercel Cron, configured in vercel.json) to flip past-due
@@ -18,6 +18,6 @@ export async function GET(req: Request) {
   if (auth !== `Bearer ${secret}`) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
-  await refreshOverdueInvoices();
-  return NextResponse.json({ ok: true, ranAt: new Date().toISOString() });
+  const count = await refreshOverdueInvoicesAndNotify();
+  return NextResponse.json({ ok: true, newlyOverdue: count, ranAt: new Date().toISOString() });
 }

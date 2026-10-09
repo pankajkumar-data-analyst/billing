@@ -35,64 +35,62 @@ export default async function AttendancePage({ searchParams }: { searchParams: {
   const calYear = Number(searchParams.y) || now.getFullYear();
   const calMonth = Number(searchParams.m) || now.getMonth() + 1; // 1-12
 
-  // Self widget + history (if the user is an employee).
-  let widget = null;
-  let history: Awaited<ReturnType<typeof prisma.attendance.findMany>> = [];
-  if (canSelf && user.employeeId) {
-    const todayRow = await prisma.attendance.findUnique({
-      where: { employeeId_date: { employeeId: user.employeeId, date: today } },
-    });
-    widget = (
-      <ClockWidget
-        name={user.name}
-        clockInAt={todayRow?.clockIn ? todayRow.clockIn.toISOString() : null}
-        clockOutAt={todayRow?.clockOut ? todayRow.clockOut.toISOString() : null}
-        workedMinutes={todayRow?.workedMinutes ?? 0}
-      />
-    );
-    history = await prisma.attendance.findMany({
-      where: { employeeId: user.employeeId },
-      orderBy: { date: "desc" },
-      take: 30,
-    });
-  }
+  const empId = user.employeeId ?? "__none__";
+  const monthRange = { gte: new Date(calYear, calMonth - 1, 1), lte: new Date(calYear, calMonth, 0) };
 
-  // Admin: everyone's attendance today.
-  let todayAll: { name: string; status: string; clockIn: Date | null; clockOut: Date | null; worked: number }[] = [];
-  if (canManage) {
-    const rows = await prisma.attendance.findMany({
-      where: { date: today },
-      include: { employee: true },
-      orderBy: { employee: { name: "asc" } },
-    });
-    todayAll = rows.map((r) => ({ name: r.employee.name, status: r.status, clockIn: r.clockIn, clockOut: r.clockOut, worked: r.workedMinutes }));
-  }
+  // Batch every independent read into one round-trip set (was ~9 sequential
+  // queries → now parallel). Each is conditional on role via empty fallbacks.
+  const [
+    todayRow,
+    history,
+    todayAllRows,
+    myCorrections,
+    pendingCorrections,
+    settings,
+    holidayMap,
+    monthAttendance,
+    allHolidayRows,
+  ] = await Promise.all([
+    canSelf && user.employeeId
+      ? prisma.attendance.findUnique({ where: { employeeId_date: { employeeId: empId, date: today } } })
+      : Promise.resolve(null),
+    canSelf && user.employeeId
+      ? prisma.attendance.findMany({ where: { employeeId: empId }, orderBy: { date: "desc" }, take: 30 })
+      : Promise.resolve([]),
+    canManage
+      ? prisma.attendance.findMany({ where: { date: today }, include: { employee: true }, orderBy: { employee: { name: "asc" } } })
+      : Promise.resolve([]),
+    canSelf && user.employeeId
+      ? prisma.attendanceCorrection.findMany({ where: { employeeId: empId }, orderBy: { createdAt: "desc" }, take: 10 })
+      : Promise.resolve([]),
+    canManage
+      ? prisma.attendanceCorrection.findMany({ where: { status: "PENDING" }, include: { employee: true }, orderBy: { createdAt: "asc" } })
+      : Promise.resolve([]),
+    getSettings(),
+    holidaysInMonth(calYear, calMonth),
+    canSelf && user.employeeId
+      ? prisma.attendance.findMany({ where: { employeeId: empId, date: monthRange } })
+      : Promise.resolve([]),
+    canManage ? prisma.holiday.findMany({ orderBy: { date: "asc" } }) : Promise.resolve([]),
+  ]);
 
-  // Regularization: employee's own history; admin's pending queue.
-  const myCorrections = canSelf && user.employeeId
-    ? await prisma.attendanceCorrection.findMany({ where: { employeeId: user.employeeId }, orderBy: { createdAt: "desc" }, take: 10 })
-    : [];
-  const pendingCorrections = canManage
-    ? await prisma.attendanceCorrection.findMany({ where: { status: "PENDING" }, include: { employee: true }, orderBy: { createdAt: "asc" } })
-    : [];
+  const widget = canSelf && user.employeeId ? (
+    <ClockWidget
+      name={user.name}
+      clockInAt={todayRow?.clockIn ? todayRow.clockIn.toISOString() : null}
+      clockOutAt={todayRow?.clockOut ? todayRow.clockOut.toISOString() : null}
+      workedMinutes={todayRow?.workedMinutes ?? 0}
+    />
+  ) : null;
 
-  // ---- Calendar data for the selected month (employee's own) ----
-  const settings = await getSettings();
+  const todayAll = todayAllRows.map((r) => ({ name: r.employee.name, status: r.status, clockIn: r.clockIn, clockOut: r.clockOut, worked: r.workedMinutes }));
+
+  // ---- Build calendar cells ----
   const weeklyOff = new Set(settings.weeklyOff.split(",").map((s) => s.trim()));
   const DAY_ABBR = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  const holidayMap = await holidaysInMonth(calYear, calMonth);
   const daysInMonth = new Date(calYear, calMonth, 0).getDate();
 
   const calDays: Record<number, DayCell> = {};
-  let monthAttendance: Awaited<ReturnType<typeof prisma.attendance.findMany>> = [];
-  if (canSelf && user.employeeId) {
-    monthAttendance = await prisma.attendance.findMany({
-      where: {
-        employeeId: user.employeeId,
-        date: { gte: new Date(calYear, calMonth - 1, 1), lte: new Date(calYear, calMonth, 0) },
-      },
-    });
-  }
   const attByDay = new Map<number, (typeof monthAttendance)[number]>();
   for (const a of monthAttendance) attByDay.set(a.date.getDate(), a);
 
@@ -122,11 +120,9 @@ export default async function AttendancePage({ searchParams }: { searchParams: {
     calDays[d] = cell;
   }
 
-  const allHolidays = canManage
-    ? (await prisma.holiday.findMany({ orderBy: { date: "asc" } })).map((h) => ({
-        id: h.id, date: h.date.toISOString(), name: h.name, recurring: h.recurring,
-      }))
-    : [];
+  const allHolidays = allHolidayRows.map((h) => ({
+    id: h.id, date: h.date.toISOString(), name: h.name, recurring: h.recurring,
+  }));
 
   return (
     <div>
