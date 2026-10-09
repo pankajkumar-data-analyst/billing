@@ -66,7 +66,7 @@ export default async function PayrollPage({ searchParams }: { searchParams: { y?
                     <TD><Badge tone={statusTone(s.status)}>{s.status}</Badge></TD>
                     <TD>
                       <div className="flex flex-wrap items-center gap-2">
-                        {s.status === "DRAFT" ? <BonusEditor id={s.id} bonus={s.bonus.toString()} deductions={s.deductions.toString()} /> : null}
+                        {s.status === "DRAFT" ? <BonusEditor id={s.id} bonus={s.bonus.toString()} deductions={s.deductions.toString()} presentDays={s.presentDays.toString()} extraDays={s.extraDays.toString()} /> : null}
                         <PayslipActions id={s.id} status={s.status} />
                         <Link href={`/payroll/${s.id}/pdf`} target="_blank" className={buttonVariants({ variant: "outline", size: "sm" })}>
                           Payslip

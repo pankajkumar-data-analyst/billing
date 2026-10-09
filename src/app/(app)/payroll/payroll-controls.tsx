@@ -77,21 +77,35 @@ export function PayslipActions({ id, status }: { id: string; status: string }) {
   );
 }
 
-/** Inline bonus/deductions editor for a DRAFT payslip. */
-export function BonusEditor({ id, bonus, deductions }: { id: string; bonus: string; deductions: string }) {
+/**
+ * Inline adjust editor for a DRAFT payslip: present days, extra (weekend/
+ * holiday/overtime) days, bonus, deductions. This is how an admin corrects an
+ * accidental extra login, adds overtime, or gives a holiday bonus.
+ */
+export function BonusEditor({
+  id, bonus, deductions, presentDays, extraDays,
+}: {
+  id: string; bonus: string; deductions: string; presentDays: string; extraDays: string;
+}) {
   const [open, setOpen] = useState(false);
   const action = setBonusDeductions.bind(null, id);
   const [state, formAction] = useFormState(action, {} as { error?: string; ok?: boolean });
 
   if (!open) {
     return (
-      <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
-        {Number(bonus) > 0 || Number(deductions) > 0 ? "Edit Bonus/Ded." : "Add Bonus"}
-      </Button>
+      <Button size="sm" variant="outline" onClick={() => setOpen(true)}>Adjust</Button>
     );
   }
   return (
-    <form action={formAction} className="flex flex-wrap items-end gap-2">
+    <form action={formAction} className="flex flex-wrap items-end gap-2 rounded-md border bg-secondary/40 p-2">
+      <div>
+        <label className="block text-[10px] text-muted-foreground">Present days</label>
+        <Input name="presentDays" type="number" step="0.5" defaultValue={presentDays} className="h-8 w-20" />
+      </div>
+      <div>
+        <label className="block text-[10px] text-muted-foreground">Extra days</label>
+        <Input name="extraDays" type="number" step="0.5" defaultValue={extraDays} className="h-8 w-20" />
+      </div>
       <div>
         <label className="block text-[10px] text-muted-foreground">Bonus ₹</label>
         <Input name="bonus" type="number" step="0.01" defaultValue={bonus} className="h-8 w-24" />
@@ -102,7 +116,7 @@ export function BonusEditor({ id, bonus, deductions }: { id: string; bonus: stri
       </div>
       <Button size="sm" variant="gold" type="submit">Save</Button>
       <Button size="sm" variant="ghost" type="button" onClick={() => setOpen(false)}>×</Button>
-      {state.error ? <span className="text-xs text-red-600">{state.error}</span> : null}
+      {state.error ? <span className="w-full text-xs text-red-600">{state.error}</span> : null}
     </form>
   );
 }

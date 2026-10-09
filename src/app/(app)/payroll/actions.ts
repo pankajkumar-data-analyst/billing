@@ -160,27 +160,40 @@ export async function markPayslipPaid(payslipId: string): Promise<void> {
 }
 
 /**
- * Admin sets a manual bonus and/or deductions on a DRAFT payslip and the net
- * is recomputed. Only DRAFT slips can be edited (APPROVED/PAID are locked).
+ * Admin manually adjusts a DRAFT payslip: present days, extra (weekend/holiday
+ * / overtime) days, bonus and deductions. The net is recomputed. This is how
+ * you FIX an accidental extra login, add overtime, give a holiday bonus, or
+ * correct present days. Only DRAFT slips can be edited (APPROVED/PAID lock —
+ * use Reopen first).
  */
 export async function setBonusDeductions(payslipId: string, _prev: { error?: string; ok?: boolean } | undefined, formData: FormData): Promise<{ error?: string; ok?: boolean }> {
   const admin = await assertPermission(PERMISSIONS.PAYROLL_PROCESS);
   const bonus = Number(formData.get("bonus") ?? 0);
   const deductions = Number(formData.get("deductions") ?? 0);
+  const extraDaysRaw = formData.get("extraDays");
+  const presentDaysRaw = formData.get("presentDays");
+
   if (Number.isNaN(bonus) || Number.isNaN(deductions) || bonus < 0 || deductions < 0) {
     return { error: "Bonus and deductions must be zero or more." };
   }
 
   const slip = await prisma.payslip.findUnique({ where: { id: payslipId }, include: { employee: true } });
   if (!slip) return { error: "Payslip not found." };
-  if (slip.status !== "DRAFT") return { error: "Only DRAFT payslips can be edited. Already approved/paid." };
+  if (slip.status !== "DRAFT") return { error: "Only DRAFT payslips can be edited. Reopen it first." };
 
-  // Recompute using the stored day counts so net stays consistent.
+  // Admin can override the auto-counted present / extra days. If a field is
+  // left blank, keep the stored (auto-computed) value.
+  const extraDays = extraDaysRaw === null || extraDaysRaw === "" ? Number(slip.extraDays) : Number(extraDaysRaw);
+  const presentDays = presentDaysRaw === null || presentDaysRaw === "" ? Number(slip.presentDays) : Number(presentDaysRaw);
+  if (Number.isNaN(extraDays) || extraDays < 0 || Number.isNaN(presentDays) || presentDays < 0) {
+    return { error: "Present days and extra days must be zero or more." };
+  }
+
   const result = calculatePayroll({
     monthlySalary: slip.grossSalary,
     workingDays: slip.workingDays,
-    presentDays: slip.presentDays,
-    extraDays: slip.extraDays,
+    presentDays,
+    extraDays,
     paidLeaveDays: slip.paidLeave,
     unpaidLeaveDays: slip.unpaidLeave,
     bonus,
@@ -189,9 +202,18 @@ export async function setBonusDeductions(payslipId: string, _prev: { error?: str
 
   await prisma.payslip.update({
     where: { id: payslipId },
-    data: { bonus: toDbString(result.bonus), deductions: toDbString(result.deductions), netSalary: toDbString(result.netSalary) },
+    data: {
+      presentDays: toDbString(result.presentDays),
+      extraDays: toDbString(result.extraDays),
+      lopDays: toDbString(result.lopDays),
+      lopAmount: toDbString(result.lopAmount),
+      extraPay: toDbString(result.extraPay),
+      bonus: toDbString(result.bonus),
+      deductions: toDbString(result.deductions),
+      netSalary: toDbString(result.netSalary),
+    },
   });
-  await writeAudit({ userId: admin.id, action: AUDIT.PAYROLL_GENERATE, entity: "Payslip", entityId: payslipId, after: { bonus, deductions } });
+  await writeAudit({ userId: admin.id, action: AUDIT.PAYROLL_GENERATE, entity: "Payslip", entityId: payslipId, before: { presentDays: slip.presentDays.toString(), extraDays: slip.extraDays.toString(), bonus: slip.bonus.toString() }, after: { presentDays, extraDays, bonus, deductions } });
   revalidatePath("/payroll");
   return { ok: true };
 }
