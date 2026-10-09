@@ -19,7 +19,7 @@ export default async function AddCandidatePage({ params }: { params: { id: strin
 
   return (
     <div>
-      <PageHeader title="Add Candidate" subtitle={`${job.title} — ${job.client.name}`} />
+      <PageHeader title="Add Candidate" subtitle={`${job.title} - ${job.client.name}`} />
       <AddCandidateForm
         action={addCandidateToJob.bind(null, job.id)}
         candidates={candidates}

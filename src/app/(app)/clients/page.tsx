@@ -94,7 +94,7 @@ export default async function ClientsPage({
                     </Link>
                     {c.industry ? <p className="text-xs text-muted-foreground">{c.industry}</p> : null}
                   </TD>
-                  <TD>{c.city ?? "—"}</TD>
+                  <TD>{c.city ?? "-"}</TD>
                   <TD><Badge tone={statusTone(c.status)}>{c.status}</Badge></TD>
                   <TD>{c._count.jobs}</TD>
                   <TD>{c._count.placements}</TD>

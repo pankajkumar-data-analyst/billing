@@ -45,7 +45,7 @@ export default async function PaymentsPage() {
                   <TD><Link href={`/invoices/${p.invoiceId}`} className="text-navy hover:underline">{p.invoice.number}</Link></TD>
                   <TD className={p.isReversed ? "text-muted-foreground line-through" : "font-medium"}>{formatINR(p.amount)}</TD>
                   <TD>{titleCase(p.mode)}</TD>
-                  <TD>{p.reference ?? "—"}</TD>
+                  <TD>{p.reference ?? "-"}</TD>
                   <TD>{p.recordedBy.employee?.name ?? p.recordedBy.email}{p.isReversed ? <Badge tone="danger" className="ml-2">Reversed</Badge> : null}</TD>
                 </TR>
               ))

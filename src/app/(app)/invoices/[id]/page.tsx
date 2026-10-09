@@ -99,7 +99,7 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
                         {it.candidateName ? <p className="text-xs text-muted-foreground">Candidate: {it.candidateName}</p> : null}
                         {it.jobTitle ? <p className="text-xs text-muted-foreground">Position: {it.jobTitle}</p> : null}
                       </TD>
-                      <TD>{it.ctc ? `CTC ${formatINR(it.ctc)}` : "—"}</TD>
+                      <TD>{it.ctc ? `CTC ${formatINR(it.ctc)}` : "-"}</TD>
                       <TD>{formatINR(it.amount)}</TD>
                     </TR>
                   ))}

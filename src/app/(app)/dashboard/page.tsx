@@ -67,7 +67,7 @@ async function AdminDashboard() {
         <KpiCard
           label="Estimated Net Profit (This Month)"
           value={formatINR(kpis.estimatedNetProfit)}
-          hint="Collected − expenses − payroll (indicative)"
+          hint="Collected - expenses - payroll (indicative)"
           tone={kpis.estimatedNetProfit.isNegative() ? "danger" : "success"}
         />
       </div>

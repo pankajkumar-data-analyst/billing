@@ -75,7 +75,7 @@ export function EmployeeForm({
 
       {isAdmin ? (
         <Card>
-          <CardHeader><CardTitle>Salary & Bank (Admin only — never visible to employees)</CardTitle></CardHeader>
+          <CardHeader><CardTitle>Salary & Bank (Admin only - never visible to employees)</CardTitle></CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2">
             <div className="space-y-1.5"><Label htmlFor="monthlySalary">Monthly Salary (₹)</Label><Input id="monthlySalary" name="monthlySalary" type="number" step="0.01" defaultValue={v("monthlySalary")} /></div>
             <div className="space-y-1.5"><Label htmlFor="pan">PAN</Label><Input id="pan" name="pan" defaultValue={v("pan")} /></div>

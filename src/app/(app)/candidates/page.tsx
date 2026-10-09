@@ -42,7 +42,7 @@ export default async function CandidatesPage({ searchParams }: { searchParams: {
     <div>
       <PageHeader
         title="Candidates"
-        subtitle="One record per person — reused across jobs."
+        subtitle="One record per person - reused across jobs."
         action={canManage ? <Link href="/candidates/new" className={buttonVariants({ variant: "gold" })}><Plus className="h-4 w-4" /> New Candidate</Link> : null}
       />
       <form className="mb-4 flex gap-2">
@@ -62,11 +62,11 @@ export default async function CandidatesPage({ searchParams }: { searchParams: {
                 <TR key={c.id}>
                   <TD><Link href={`/candidates/${c.id}`} className="font-medium text-navy hover:underline">{c.fullName}</Link>
                     {c.mobile ? <p className="text-xs text-muted-foreground">{c.mobile}</p> : null}</TD>
-                  <TD>{c.currentCompany ?? "—"}</TD>
-                  <TD>{c.totalExperience ? `${c.totalExperience} yr` : "—"}</TD>
-                  <TD>{c.expectedCtc ? formatINR(c.expectedCtc) : "—"}</TD>
+                  <TD>{c.currentCompany ?? "-"}</TD>
+                  <TD>{c.totalExperience ? `${c.totalExperience} yr` : "-"}</TD>
+                  <TD>{c.expectedCtc ? formatINR(c.expectedCtc) : "-"}</TD>
                   <TD>{c._count.applications}</TD>
-                  <TD>{c.recruiter?.name ?? "—"}</TD>
+                  <TD>{c.recruiter?.name ?? "-"}</TD>
                 </TR>
               ))
             )}

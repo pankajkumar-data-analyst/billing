@@ -72,7 +72,7 @@ export default async function ExpensesPage() {
                     <TR key={e.id}>
                       <TD>{formatDate(e.expenseDate)}</TD>
                       <TD>{e.category}</TD>
-                      <TD>{e.vendor ?? "—"}</TD>
+                      <TD>{e.vendor ?? "-"}</TD>
                       <TD className="font-medium">{formatINR(e.amount)}</TD>
                     </TR>
                   ))

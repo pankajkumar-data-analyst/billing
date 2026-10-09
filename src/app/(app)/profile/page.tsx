@@ -19,7 +19,7 @@ export default async function ProfilePage() {
           <CardHeader><CardTitle>Account</CardTitle></CardHeader>
           <CardContent className="space-y-2 text-sm">
             <Row k="Name" v={dbUser?.employee?.name ?? user.name} />
-            <Row k="Email" v={dbUser?.email ?? "—"} />
+            <Row k="Email" v={dbUser?.email ?? "-"} />
             <Row k="Role" v={titleCase(dbUser?.role.name ?? user.role)} />
             {dbUser?.employee ? <Row k="Employee ID" v={dbUser.employee.employeeCode} /> : null}
             {dbUser?.lastLoginAt ? <Row k="Last Login" v={dbUser.lastLoginAt.toLocaleString("en-IN")} /> : null}

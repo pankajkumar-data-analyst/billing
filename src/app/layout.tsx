@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "One2Infinite — Internal Business Management",
+  title: "One2Infinite - Internal Business Management",
   description: "Private internal system for One2Infinite Recruitment Solutions.",
   robots: { index: false, follow: false }, // private app — never index
 };

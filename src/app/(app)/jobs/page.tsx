@@ -68,7 +68,7 @@ export default async function JobsPage({ searchParams }: { searchParams: { q?: s
                   <TD><Link href={`/jobs/${j.id}`} className="font-medium text-navy hover:underline">{j.title}</Link>
                     {j.location ? <p className="text-xs text-muted-foreground">{j.location}</p> : null}</TD>
                   <TD>{j.client.name}</TD>
-                  <TD>{j.recruiter?.name ?? "—"}</TD>
+                  <TD>{j.recruiter?.name ?? "-"}</TD>
                   <TD>{j.openings}</TD>
                   <TD>{j._count.applications}</TD>
                   <TD><Badge tone={statusTone(j.status)}>{titleCase(j.status)}</Badge></TD>

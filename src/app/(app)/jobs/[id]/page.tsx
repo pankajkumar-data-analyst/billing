@@ -75,7 +75,7 @@ export default async function JobDetailPage({ params }: { params: { id: string }
                     {app.candidate.fullName}
                   </Link>
                   <p className="text-xs text-muted-foreground">
-                    {app.candidate.currentDesignation ?? "—"}
+                    {app.candidate.currentDesignation ?? "-"}
                     {app.candidate.totalExperience ? ` · ${app.candidate.totalExperience} yrs` : ""}
                   </p>
                 </div>

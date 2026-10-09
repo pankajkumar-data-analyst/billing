@@ -34,7 +34,7 @@ export default async function PlacementDetailPage({ params }: { params: { id: st
   return (
     <div>
       <PageHeader
-        title={`Placement — ${p.candidate.fullName}`}
+        title={`Placement - ${p.candidate.fullName}`}
         subtitle={`${p.job.title} @ ${p.client.name}`}
         action={
           <div className="flex gap-2">
@@ -87,7 +87,7 @@ export default async function PlacementDetailPage({ params }: { params: { id: st
             <Row label="Start" value={formatDate(p.guaranteeStart)} />
             <Row label="End" value={formatDate(p.guaranteeEnd)} />
             <Row label="Duration" value={`${p.guaranteeDays} days`} />
-            <Row label="Status" value={gstate === "NA" ? "—" : <Badge tone={statusTone(gstate)}>{titleCase(gstate)}</Badge>} />
+            <Row label="Status" value={gstate === "NA" ? "-" : <Badge tone={statusTone(gstate)}>{titleCase(gstate)}</Badge>} />
             {canManage && p.status === "JOINED" ? (
               <div className="pt-3"><ReplacementButton placementId={p.id} /></div>
             ) : null}

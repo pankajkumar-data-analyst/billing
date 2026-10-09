@@ -26,7 +26,7 @@ export default async function SettingsPage() {
     <div>
       <PageHeader
         title="Settings"
-        subtitle="Company, bank, invoice numbering, GST and attendance rules — all configurable here."
+        subtitle="Company, bank, invoice numbering, GST and attendance rules - all configurable here."
         action={<Link href="/settings/audit" className={buttonVariants({ variant: "outline" })}>View Audit Log</Link>}
       />
       <SettingsForm defaults={defaults} />

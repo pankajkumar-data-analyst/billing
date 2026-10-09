@@ -20,7 +20,7 @@ export default async function NewPlacementPage({ searchParams }: { searchParams:
 
   const options: ApplicationOption[] = applications.map((a) => ({
     id: a.id,
-    label: `${a.candidate.fullName} — ${a.job.title} (${a.job.client.name})`,
+    label: `${a.candidate.fullName} - ${a.job.title} (${a.job.client.name})`,
     defaultFeeType: a.job.client.terms?.feeType ?? "PERCENT",
     defaultPercent: a.job.client.terms?.percent?.toString() ?? null,
     defaultFixed: a.job.client.terms?.fixedAmount?.toString() ?? null,

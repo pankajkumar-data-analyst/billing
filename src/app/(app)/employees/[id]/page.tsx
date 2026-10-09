@@ -60,11 +60,11 @@ export default async function EmployeeDetailPage({ params }: { params: { id: str
           <Card>
             <CardHeader><CardTitle>Salary & Bank <span className="text-xs font-normal text-muted-foreground">(Admin only)</span></CardTitle></CardHeader>
             <CardContent className="space-y-2 text-sm">
-              <Row k="Monthly Salary" v={emp.monthlySalary ? formatINR(emp.monthlySalary) : "—"} />
-              <Row k="PAN" v={emp.pan ?? "—"} />
-              <Row k="Bank" v={emp.bankName ?? "—"} />
-              <Row k="Account" v={emp.bankAccount ?? "—"} />
-              <Row k="IFSC" v={emp.bankIfsc ?? "—"} />
+              <Row k="Monthly Salary" v={emp.monthlySalary ? formatINR(emp.monthlySalary) : "-"} />
+              <Row k="PAN" v={emp.pan ?? "-"} />
+              <Row k="Bank" v={emp.bankName ?? "-"} />
+              <Row k="Account" v={emp.bankAccount ?? "-"} />
+              <Row k="IFSC" v={emp.bankIfsc ?? "-"} />
             </CardContent>
           </Card>
         ) : null}

@@ -21,7 +21,7 @@ export default async function DocumentsPage() {
           <p className="mb-2 font-medium text-navy">Secure storage is scaffolded, uploads land in Phase 2.</p>
           <p>
             The database model and permission model for documents are in place. File uploads require a
-            private blob store (Vercel Blob or Cloudflare R2) with signed-URL access — this is wired up in
+            private blob store (Vercel Blob or Cloudflare R2) with signed-URL access - this is wired up in
             Phase 2 so documents are never served from public URLs. See the README for the storage plan.
           </p>
         </CardContent>

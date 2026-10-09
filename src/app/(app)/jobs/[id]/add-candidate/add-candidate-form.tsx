@@ -51,7 +51,7 @@ export function AddCandidateForm({
               <option value="">Select candidate…</option>
               {candidates.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.fullName}{c.currentCompany ? ` — ${c.currentCompany}` : ""}{c.mobile ? ` (${c.mobile})` : ""}
+                  {c.fullName}{c.currentCompany ? ` - ${c.currentCompany}` : ""}{c.mobile ? ` (${c.mobile})` : ""}
                 </option>
               ))}
             </Select>

@@ -30,10 +30,10 @@ export default async function AuditLogPage() {
               logs.map((l) => (
                 <TR key={l.id}>
                   <TD className="whitespace-nowrap">{formatDateTime(l.createdAt)}</TD>
-                  <TD>{l.user?.employee?.name ?? l.user?.email ?? "—"}</TD>
+                  <TD>{l.user?.employee?.name ?? l.user?.email ?? "-"}</TD>
                   <TD>{titleCase(l.action)}</TD>
-                  <TD>{l.entity ? `${l.entity}${l.entityId ? ` (${l.entityId.slice(0, 8)}…)` : ""}` : "—"}</TD>
-                  <TD>{l.ip ?? "—"}</TD>
+                  <TD>{l.entity ? `${l.entity}${l.entityId ? ` (${l.entityId.slice(0, 8)}…)` : ""}` : "-"}</TD>
+                  <TD>{l.ip ?? "-"}</TD>
                 </TR>
               ))
             )}

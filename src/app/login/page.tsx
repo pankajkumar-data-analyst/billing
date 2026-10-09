@@ -65,7 +65,7 @@ export default function LoginPage() {
           </CardContent>
         </Card>
         <p className="mt-4 text-center text-xs text-muted-foreground">
-          One2Infinite Recruitment Solutions — authorized users only.
+          One2Infinite Recruitment Solutions - authorized users only.
         </p>
       </div>
     </main>

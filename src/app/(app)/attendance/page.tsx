@@ -136,7 +136,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: {
                 <CardHeader><CardTitle>Attendance Regularization</CardTitle></CardHeader>
                 <CardContent>
                   <p className="mb-3 text-xs text-muted-foreground">
-                    Forgot to clock in/out or wrong time? Request a correction — an admin will review it.
+                    Forgot to clock in/out or wrong time? Request a correction - an admin will review it.
                   </p>
                   <RegularizeForm />
                   {myCorrections.length > 0 ? (
@@ -159,7 +159,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: {
         <div className={widget ? "lg:col-span-2" : "lg:col-span-3"}>
           {canManage ? (
             <Card className="mb-6">
-              <CardHeader><CardTitle>Today — All Employees</CardTitle></CardHeader>
+              <CardHeader><CardTitle>Today - All Employees</CardTitle></CardHeader>
               <CardContent className="p-0">
                 <Table>
                   <THead><TR><TH>Employee</TH><TH>In</TH><TH>Out</TH><TH>Worked</TH><TH>Status</TH></TR></THead>
@@ -170,9 +170,9 @@ export default async function AttendancePage({ searchParams }: { searchParams: {
                       todayAll.map((r, i) => (
                         <TR key={i}>
                           <TD className="font-medium">{r.name}</TD>
-                          <TD>{r.clockIn ? formatTime(r.clockIn) : "—"}</TD>
-                          <TD>{r.clockOut ? formatTime(r.clockOut) : "—"}</TD>
-                          <TD>{r.worked > 0 ? formatWorkedDuration(r.worked) : "—"}</TD>
+                          <TD>{r.clockIn ? formatTime(r.clockIn) : "-"}</TD>
+                          <TD>{r.clockOut ? formatTime(r.clockOut) : "-"}</TD>
+                          <TD>{r.worked > 0 ? formatWorkedDuration(r.worked) : "-"}</TD>
                           <TD><Badge tone={statusTone(r.status)}>{titleCase(r.status)}</Badge></TD>
                         </TR>
                       ))
@@ -243,9 +243,9 @@ export default async function AttendancePage({ searchParams }: { searchParams: {
                     {history.map((r) => (
                       <TR key={r.id}>
                         <TD>{formatDate(r.date)}</TD>
-                        <TD>{r.clockIn ? formatTime(r.clockIn) : "—"}</TD>
-                        <TD>{r.clockOut ? formatTime(r.clockOut) : "—"}</TD>
-                        <TD>{r.workedMinutes > 0 ? formatWorkedDuration(r.workedMinutes) : "—"}</TD>
+                        <TD>{r.clockIn ? formatTime(r.clockIn) : "-"}</TD>
+                        <TD>{r.clockOut ? formatTime(r.clockOut) : "-"}</TD>
+                        <TD>{r.workedMinutes > 0 ? formatWorkedDuration(r.workedMinutes) : "-"}</TD>
                         <TD><Badge tone={statusTone(r.status)}>{titleCase(r.status)}</Badge></TD>
                       </TR>
                     ))}

@@ -58,9 +58,9 @@ export function ClockWidget({
       </div>
       <CardContent className="pt-5">
         <div className="mb-4 grid grid-cols-3 gap-3 text-center">
-          <div><p className="text-xs text-muted-foreground">Clock In</p><p className="text-lg font-semibold text-navy">{clockInAt ? formatTime(clockInAt) : "—"}</p></div>
-          <div><p className="text-xs text-muted-foreground">Clock Out</p><p className="text-lg font-semibold text-navy">{clockOutAt ? formatTime(clockOutAt) : "—"}</p></div>
-          <div><p className="text-xs text-muted-foreground">Worked</p><p className="text-lg font-semibold text-navy">{workedMinutes > 0 ? formatWorkedDuration(workedMinutes) : "—"}</p></div>
+          <div><p className="text-xs text-muted-foreground">Clock In</p><p className="text-lg font-semibold text-navy">{clockInAt ? formatTime(clockInAt) : "-"}</p></div>
+          <div><p className="text-xs text-muted-foreground">Clock Out</p><p className="text-lg font-semibold text-navy">{clockOutAt ? formatTime(clockOutAt) : "-"}</p></div>
+          <div><p className="text-xs text-muted-foreground">Worked</p><p className="text-lg font-semibold text-navy">{workedMinutes > 0 ? formatWorkedDuration(workedMinutes) : "-"}</p></div>
         </div>
 
         {error ? <p className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}

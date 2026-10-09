@@ -41,7 +41,7 @@ export default async function PayrollPage({ searchParams }: { searchParams: { y?
             <GeneratePayroll year={year} month={month} />
             <p className="mt-3 text-xs text-muted-foreground">
               Generates DRAFT payslips from attendance + approved leave. Review, Approve, then Mark Paid.
-              No money is transferred — Phase 1 produces statements only.
+              No money is transferred - Phase 1 produces statements only.
             </p>
           </CardContent>
         </Card>

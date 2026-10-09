@@ -43,9 +43,9 @@ export default async function EmployeesPage() {
               <TR key={emp.id}>
                 <TD><Link href={`/employees/${emp.id}`} className="font-medium text-navy hover:underline">{emp.name}</Link></TD>
                 <TD>{emp.employeeCode}</TD>
-                <TD>{emp.designation ?? "—"}</TD>
+                <TD>{emp.designation ?? "-"}</TD>
                 <TD>{emp.user ? titleCase(emp.user.role.name) : "No login"}</TD>
-                {canSeeSalary ? <TD>{emp.monthlySalary ? formatINR(emp.monthlySalary) : "—"}</TD> : null}
+                {canSeeSalary ? <TD>{emp.monthlySalary ? formatINR(emp.monthlySalary) : "-"}</TD> : null}
                 <TD><Badge tone={statusTone(emp.status)}>{titleCase(emp.status)}</Badge></TD>
               </TR>
             ))}

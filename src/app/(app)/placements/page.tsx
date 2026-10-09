@@ -32,7 +32,7 @@ export default async function PlacementsPage() {
     <div>
       <PageHeader
         title="Placements"
-        subtitle="Successful joinings — the link between recruitment and billing."
+        subtitle="Successful joinings - the link between recruitment and billing."
         action={
           <div className="flex gap-2">
             {hasPermission(user, PERMISSIONS.REPORT_EXPORT_FINANCIAL) ? (
@@ -64,8 +64,8 @@ export default async function PlacementsPage() {
                     <TD>{p.client.name}</TD>
                     <TD>{formatDate(p.joiningDate)}</TD>
                     {canSeeMoney ? <TD>{formatINR(p.calculatedFee)}</TD> : null}
-                    <TD>{gstate === "NA" ? "—" : <Badge tone={statusTone(gstate)}>{titleCase(gstate)}</Badge>}</TD>
-                    <TD>{p.invoice ? <Link href={`/invoices/${p.invoice.id}`} className="text-navy hover:underline">{p.invoice.number}</Link> : <span className="text-muted-foreground">—</span>}</TD>
+                    <TD>{gstate === "NA" ? "-" : <Badge tone={statusTone(gstate)}>{titleCase(gstate)}</Badge>}</TD>
+                    <TD>{p.invoice ? <Link href={`/invoices/${p.invoice.id}`} className="text-navy hover:underline">{p.invoice.number}</Link> : <span className="text-muted-foreground">-</span>}</TD>
                     <TD><Badge tone={statusTone(p.status)}>{titleCase(p.status)}</Badge></TD>
                   </TR>
                 );
