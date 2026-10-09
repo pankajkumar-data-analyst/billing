@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import { requirePermission } from "@/lib/auth/guards";
 import { PERMISSIONS } from "@/lib/rbac";
+import { candidateScope } from "@/lib/scope";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/app/page-header";
 import { CandidateForm } from "../../candidate-form";
@@ -9,9 +11,10 @@ import { updateCandidate } from "../../actions";
 export const dynamic = "force-dynamic";
 
 export default async function EditCandidatePage({ params }: { params: { id: string } }) {
-  await requirePermission(PERMISSIONS.CANDIDATE_MANAGE);
+  const user = await requirePermission(PERMISSIONS.CANDIDATE_MANAGE);
   const [candidate, recruiters] = await Promise.all([
-    prisma.candidate.findUnique({ where: { id: params.id } }),
+    // Scoped so a recruiter can't open the edit form for another's candidate.
+    prisma.candidate.findFirst({ where: { AND: [{ id: params.id }, candidateScope(user)] } }),
     prisma.employee.findMany({ where: { status: "ACTIVE" }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
   ]);
   if (!candidate) notFound();

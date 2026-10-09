@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { requirePermission } from "@/lib/auth/guards";
+import { requirePermission, hasPermission } from "@/lib/auth/guards";
 import { PERMISSIONS } from "@/lib/rbac";
-import { hasPermission } from "@/lib/auth/guards";
+import { clientScope } from "@/lib/scope";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/app/page-header";
 import { Card } from "@/components/ui/card";
@@ -26,6 +26,7 @@ export default async function ClientsPage({
   const clients = await prisma.client.findMany({
     where: {
       AND: [
+        clientScope(user), // recruiters: only clients with a job assigned to them
         q ? { name: { contains: q, mode: "insensitive" } } : {},
         status ? { status: status as "ACTIVE" | "INACTIVE" | "PROSPECT" } : {},
       ],

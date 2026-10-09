@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requirePermission, hasPermission } from "@/lib/auth/guards";
 import { PERMISSIONS } from "@/lib/rbac";
+import { candidateScope } from "@/lib/scope";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/app/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,8 +18,10 @@ export default async function CandidateDetailPage({ params }: { params: { id: st
   const user = await requirePermission(PERMISSIONS.CANDIDATE_VIEW);
   const canManage = hasPermission(user, PERMISSIONS.CANDIDATE_MANAGE);
 
-  const candidate = await prisma.candidate.findUnique({
-    where: { id: params.id },
+  // Scoped: recruiters can only open candidates they own or who applied to
+  // their jobs — not arbitrary candidates by ID.
+  const candidate = await prisma.candidate.findFirst({
+    where: { AND: [{ id: params.id }, candidateScope(user)] },
     include: {
       recruiter: true,
       applications: { include: { job: { include: { client: true } }, placement: true }, orderBy: { updatedAt: "desc" } },

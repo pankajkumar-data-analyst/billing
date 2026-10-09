@@ -101,8 +101,15 @@ async function seedSettings() {
 
 async function seedAdmin(adminRoleId: string) {
   const email = (process.env.SEED_ADMIN_EMAIL ?? "admin@one2infinite.com").toLowerCase();
-  const password = process.env.SEED_ADMIN_PASSWORD ?? "ChangeMe!2026";
+  const password = process.env.SEED_ADMIN_PASSWORD;
   const name = process.env.SEED_ADMIN_NAME ?? "Owner";
+
+  // Never fall back to a hardcoded/predictable admin password.
+  if (!password) {
+    throw new Error(
+      "SEED_ADMIN_PASSWORD is required to seed the admin account. Set it in .env.local (min 10 chars, upper/lower/digit/symbol).",
+    );
+  }
 
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {

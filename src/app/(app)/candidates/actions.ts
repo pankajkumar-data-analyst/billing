@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { assertPermission } from "@/lib/auth/guards";
 import { PERMISSIONS } from "@/lib/rbac";
+import { candidateScope } from "@/lib/scope";
 import { candidateSchema } from "@/lib/validation";
 import { toDbString } from "@/lib/money";
 import { z } from "zod";
@@ -39,9 +40,15 @@ export async function createCandidate(_prev: ActionState, formData: FormData): P
 }
 
 export async function updateCandidate(id: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
-  await assertPermission(PERMISSIONS.CANDIDATE_MANAGE);
+  const user = await assertPermission(PERMISSIONS.CANDIDATE_MANAGE);
   const parsed = candidateSchema.safeParse(Object.fromEntries(formData.entries()));
   if (!parsed.success) return { error: "Please fix the highlighted fields.", fieldErrors: flatten(parsed.error) };
+
+  // Row-level scope: a recruiter may only edit candidates they own / applied to
+  // their jobs. Confirm the id is in-scope before mutating (prevents write IDOR).
+  const allowed = await prisma.candidate.findFirst({ where: { AND: [{ id }, candidateScope(user)] }, select: { id: true } });
+  if (!allowed) return { error: "You don't have access to this candidate." };
+
   await prisma.candidate.update({ where: { id }, data: mapData(parsed.data) });
   revalidatePath("/candidates");
   revalidatePath(`/candidates/${id}`);

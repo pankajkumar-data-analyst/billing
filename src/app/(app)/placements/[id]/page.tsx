@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requirePermission, hasPermission } from "@/lib/auth/guards";
 import { PERMISSIONS } from "@/lib/rbac";
+import { placementScope } from "@/lib/scope";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/app/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,8 +22,9 @@ export default async function PlacementDetailPage({ params }: { params: { id: st
   const canInvoice = hasPermission(user, PERMISSIONS.INVOICE_CREATE);
   const canSeeMoney = hasPermission(user, PERMISSIONS.INVOICE_VIEW);
 
-  const p = await prisma.placement.findUnique({
-    where: { id: params.id },
+  // Scoped: a recruiter can only open their own placement.
+  const p = await prisma.placement.findFirst({
+    where: { AND: [{ id: params.id }, placementScope(user)] },
     include: { candidate: true, client: true, job: true, invoice: true },
   });
   if (!p) notFound();

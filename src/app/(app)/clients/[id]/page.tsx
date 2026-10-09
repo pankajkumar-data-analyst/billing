@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requirePermission, hasPermission } from "@/lib/auth/guards";
 import { PERMISSIONS } from "@/lib/rbac";
+import { clientScope } from "@/lib/scope";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/app/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,8 +21,9 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
   const canManage = hasPermission(user, PERMISSIONS.CLIENT_MANAGE);
   const canSeeMoney = hasPermission(user, PERMISSIONS.INVOICE_VIEW);
 
-  const client = await prisma.client.findUnique({
-    where: { id: params.id },
+  // Scoped: a recruiter can only open a client that has a job assigned to them.
+  const client = await prisma.client.findFirst({
+    where: { AND: [{ id: params.id }, clientScope(user)] },
     include: {
       terms: true,
       contacts: true,

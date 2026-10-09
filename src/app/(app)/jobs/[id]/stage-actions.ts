@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { assertPermission } from "@/lib/auth/guards";
+import { assertPermission, hasPermission } from "@/lib/auth/guards";
 import { PERMISSIONS } from "@/lib/rbac";
 import { z } from "zod";
 
@@ -16,10 +16,21 @@ const schema = z.object({
 
 /** Move a candidate application to a new pipeline stage. */
 export async function changeStage(formData: FormData): Promise<void> {
-  await assertPermission(PERMISSIONS.CANDIDATE_MANAGE);
+  const user = await assertPermission(PERMISSIONS.CANDIDATE_MANAGE);
   const parsed = schema.safeParse(Object.fromEntries(formData.entries()));
   if (!parsed.success) return;
   const { applicationId, stage } = parsed.data;
+
+  // Row-level scope: a recruiter may only move applications on jobs assigned to
+  // them. Full viewers (admins) may move any. Prevents write IDOR.
+  const existing = await prisma.candidateApplication.findUnique({
+    where: { id: applicationId },
+    include: { job: { select: { recruiterId: true } } },
+  });
+  if (!existing) return;
+  if (!hasPermission(user, PERMISSIONS.JOB_VIEW) && existing.job.recruiterId !== user.employeeId) {
+    return; // not their job — silently ignore
+  }
 
   const app = await prisma.candidateApplication.update({
     where: { id: applicationId },

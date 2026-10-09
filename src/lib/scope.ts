@@ -26,3 +26,25 @@ export function candidateScope(user: SessionUser): Prisma.CandidateWhereInput {
     OR: [{ recruiterId: empId }, { applications: { some: { job: { recruiterId: empId } } } }],
   };
 }
+
+/**
+ * Clients a recruiter may see: only clients that have a job assigned to them.
+ * Full viewers (admins / anyone with JOB_VIEW) see all clients.
+ */
+export function clientScope(user: SessionUser): Prisma.ClientWhereInput {
+  if (hasPermission(user, PERMISSIONS.JOB_VIEW)) return {};
+  const empId = user.employeeId ?? "__none__";
+  return { jobs: { some: { recruiterId: empId } } };
+}
+
+/**
+ * Placements a recruiter may see: ones for a job assigned to them or a
+ * candidate they own. Full viewers see all.
+ */
+export function placementScope(user: SessionUser): Prisma.PlacementWhereInput {
+  if (hasPermission(user, PERMISSIONS.JOB_VIEW)) return {};
+  const empId = user.employeeId ?? "__none__";
+  return {
+    OR: [{ job: { recruiterId: empId } }, { candidate: { recruiterId: empId } }],
+  };
+}

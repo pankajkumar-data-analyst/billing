@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requirePermission, hasPermission } from "@/lib/auth/guards";
 import { PERMISSIONS } from "@/lib/rbac";
+import { placementScope } from "@/lib/scope";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/app/page-header";
 import { Card } from "@/components/ui/card";
@@ -21,6 +22,7 @@ export default async function PlacementsPage() {
   const canSeeMoney = hasPermission(user, PERMISSIONS.INVOICE_VIEW);
 
   const placements = await prisma.placement.findMany({
+    where: placementScope(user), // recruiters: only their own placements
     include: { candidate: true, client: true, job: true, invoice: true },
     orderBy: { joiningDate: "desc" },
     take: 100,
