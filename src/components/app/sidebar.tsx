@@ -34,11 +34,14 @@ export function Sidebar({
             href={item.href}
             onClick={() => setOpen(false)}
             className={cn(
-              "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-              active ? "bg-gold/20 text-navy" : "text-white/70 hover:bg-white/10 hover:text-white",
+              "relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+              active
+                ? "bg-gold/15 text-gold"
+                : "text-white/65 hover:bg-white/5 hover:text-white",
             )}
           >
-            <Icon className="h-4 w-4 shrink-0" />
+            {active ? <span className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r bg-gold" /> : null}
+            <Icon className={cn("h-4 w-4 shrink-0", active ? "text-gold" : "")} />
             {item.label}
           </Link>
         );

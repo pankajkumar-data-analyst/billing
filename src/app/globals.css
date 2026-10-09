@@ -9,7 +9,8 @@
  */
 @layer base {
   :root {
-    --background: 0 0% 100%;
+    /* Soft blue-grey app background, crisp white cards */
+    --background: 220 24% 97%;
     --foreground: 240 29% 14%; /* navy #1a1a2e */
 
     --card: 0 0% 100%;
@@ -18,11 +19,11 @@
     --primary: 240 29% 14%; /* navy */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 17% 96%;
+    --secondary: 220 20% 95%;
     --secondary-foreground: 240 29% 14%;
 
-    --muted: 210 17% 96%;
-    --muted-foreground: 0 0% 47%;
+    --muted: 220 20% 95%;
+    --muted-foreground: 220 9% 46%;
 
     --accent: 46 90% 57%; /* gold #F4C430 */
     --accent-foreground: 240 29% 14%;
@@ -30,11 +31,11 @@
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 210 14% 92%;
-    --input: 210 14% 92%;
+    --border: 220 16% 90%;
+    --input: 220 16% 90%;
     --ring: 46 90% 57%;
 
-    --radius: 0.5rem;
+    --radius: 0.625rem;
   }
 }
 

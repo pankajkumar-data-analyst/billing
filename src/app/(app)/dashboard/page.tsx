@@ -15,6 +15,10 @@ import { formatDate } from "@/lib/utils";
 import { titleCase } from "@/lib/labels";
 import { guaranteeState } from "@/lib/services/guarantee";
 import { Badge, statusTone } from "@/components/ui/badge";
+import {
+  Wallet, TrendingUp, TrendingDown, Clock, AlertTriangle, FileText, Building2,
+  Briefcase, Users, UserCheck, CalendarClock, Banknote, Receipt,
+} from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -49,18 +53,18 @@ async function AdminDashboard() {
       <PageHeader title="Dashboard" subtitle="Your business at a glance." />
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="Total Revenue (Collected)" value={formatINRCompact(kpis.totalRevenue)} tone="success" />
-        <KpiCard label="Revenue This Month" value={formatINRCompact(kpis.revenueThisMonth)} />
-        <KpiCard label="Pending Receivables" value={formatINRCompact(kpis.pendingReceivables)} tone="warning" href="/invoices" />
-        <KpiCard label="Overdue" value={formatINRCompact(kpis.overduePayments)} tone="danger" href="/invoices?status=OVERDUE" />
-        <KpiCard label="Total Invoices" value={String(kpis.totalInvoices)} hint={`${kpis.paidInvoices} paid`} href="/invoices" />
-        <KpiCard label="Active Clients" value={String(kpis.activeClients)} href="/clients?status=ACTIVE" />
-        <KpiCard label="Active Jobs" value={String(kpis.activeJobs)} href="/jobs" />
-        <KpiCard label="Candidates in Pipeline" value={String(kpis.candidatesInPipeline)} href="/candidates" />
-        <KpiCard label="Placements This Month" value={String(kpis.placementsThisMonth)} href="/placements" />
-        <KpiCard label="Present Today" value={String(kpis.employeesPresent)} hint={`${kpis.employeesAbsent} absent`} href="/attendance" />
-        <KpiCard label="Month Payroll" value={formatINRCompact(kpis.currentMonthPayroll)} href="/payroll" />
-        <KpiCard label="Month Expenses" value={formatINRCompact(kpis.currentMonthExpenses)} href="/expenses" />
+        <KpiCard label="Total Revenue (Collected)" value={formatINRCompact(kpis.totalRevenue)} tone="success" icon={Wallet} />
+        <KpiCard label="Revenue This Month" value={formatINRCompact(kpis.revenueThisMonth)} icon={TrendingUp} />
+        <KpiCard label="Pending Receivables" value={formatINRCompact(kpis.pendingReceivables)} tone="warning" href="/invoices" icon={Clock} />
+        <KpiCard label="Overdue" value={formatINRCompact(kpis.overduePayments)} tone="danger" href="/invoices?status=OVERDUE" icon={AlertTriangle} />
+        <KpiCard label="Total Invoices" value={String(kpis.totalInvoices)} hint={`${kpis.paidInvoices} paid`} href="/invoices" icon={FileText} />
+        <KpiCard label="Active Clients" value={String(kpis.activeClients)} href="/clients?status=ACTIVE" icon={Building2} />
+        <KpiCard label="Active Jobs" value={String(kpis.activeJobs)} href="/jobs" icon={Briefcase} />
+        <KpiCard label="Candidates in Pipeline" value={String(kpis.candidatesInPipeline)} href="/candidates" icon={Users} />
+        <KpiCard label="Placements This Month" value={String(kpis.placementsThisMonth)} href="/placements" icon={UserCheck} />
+        <KpiCard label="Present Today" value={String(kpis.employeesPresent)} hint={`${kpis.employeesAbsent} absent`} href="/attendance" icon={CalendarClock} />
+        <KpiCard label="Month Payroll" value={formatINRCompact(kpis.currentMonthPayroll)} href="/payroll" icon={Banknote} />
+        <KpiCard label="Month Expenses" value={formatINRCompact(kpis.currentMonthExpenses)} href="/expenses" icon={Receipt} />
       </div>
 
       <div className="mb-6">
@@ -69,6 +73,7 @@ async function AdminDashboard() {
           value={formatINR(kpis.estimatedNetProfit)}
           hint="Collected - expenses - payroll (indicative)"
           tone={kpis.estimatedNetProfit.isNegative() ? "danger" : "success"}
+          icon={kpis.estimatedNetProfit.isNegative() ? TrendingDown : TrendingUp}
         />
       </div>
 
