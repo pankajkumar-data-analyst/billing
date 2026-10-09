@@ -5,7 +5,7 @@ import { useFormState, useFormStatus } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { generatePayroll, approvePayslip, markPayslipPaid, setBonusDeductions } from "./actions";
+import { generatePayroll, approvePayslip, markPayslipPaid, setBonusDeductions, reopenPayslip } from "./actions";
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
@@ -55,9 +55,26 @@ export function GeneratePayroll({ year, month }: { year: number; month: number }
 
 export function PayslipActions({ id, status }: { id: string; status: string }) {
   const [pending, start] = useTransition();
-  if (status === "DRAFT") return <Button size="sm" variant="default" disabled={pending} onClick={() => start(() => approvePayslip(id))}>Approve</Button>;
-  if (status === "APPROVED") return <Button size="sm" variant="gold" disabled={pending} onClick={() => start(() => markPayslipPaid(id))}>Mark Paid</Button>;
-  return null;
+  if (status === "DRAFT") {
+    return <Button size="sm" variant="default" disabled={pending} onClick={() => start(() => approvePayslip(id))}>Approve</Button>;
+  }
+  // APPROVED / PAID: allow progressing + reopening back to DRAFT to edit.
+  return (
+    <div className="flex items-center gap-2">
+      {status === "APPROVED" ? (
+        <Button size="sm" variant="gold" disabled={pending} onClick={() => start(() => markPayslipPaid(id))}>Mark Paid</Button>
+      ) : null}
+      <Button
+        size="sm"
+        variant="ghost"
+        disabled={pending}
+        title="Reopen to DRAFT so you can edit (bonus, regenerate)"
+        onClick={() => { if (confirm("Reopen this payslip to DRAFT for editing?")) start(() => reopenPayslip(id)); }}
+      >
+        Reopen
+      </Button>
+    </div>
+  );
 }
 
 /** Inline bonus/deductions editor for a DRAFT payslip. */

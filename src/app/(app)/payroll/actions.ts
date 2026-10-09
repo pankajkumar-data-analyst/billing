@@ -136,6 +136,20 @@ export async function approvePayslip(payslipId: string): Promise<void> {
   revalidatePath("/payroll");
 }
 
+/**
+ * Reopen an APPROVED or PAID payslip back to DRAFT so it can be edited again
+ * (fix a bonus, re-generate, etc.). Admin only; audited. No money moved in
+ * Phase 1, so reopening a "Paid" statement is safe.
+ */
+export async function reopenPayslip(payslipId: string): Promise<void> {
+  const admin = await assertPermission(PERMISSIONS.PAYROLL_PROCESS);
+  const slip = await prisma.payslip.findUnique({ where: { id: payslipId } });
+  if (!slip || slip.status === "DRAFT") return;
+  await prisma.payslip.update({ where: { id: payslipId }, data: { status: "DRAFT" } });
+  await writeAudit({ userId: admin.id, action: AUDIT.PAYROLL_GENERATE, entity: "Payslip", entityId: payslipId, before: { status: slip.status }, after: { status: "DRAFT" } });
+  revalidatePath("/payroll");
+}
+
 export async function markPayslipPaid(payslipId: string): Promise<void> {
   const admin = await assertPermission(PERMISSIONS.PAYROLL_PROCESS);
   const slip = await prisma.payslip.findUnique({ where: { id: payslipId } });
