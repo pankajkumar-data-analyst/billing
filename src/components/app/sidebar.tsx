@@ -6,7 +6,8 @@ import { usePathname } from "next/navigation";
 import { Logo } from "@/components/brand/logo";
 import { cn } from "@/lib/utils";
 import { visibleNav } from "./nav-config";
-import { Menu, X, LogOut } from "lucide-react";
+import { Menu, X } from "lucide-react";
+import { LogoutButton } from "./logout-button";
 
 /**
  * Responsive SaaS sidebar. On desktop it is a fixed left rail; on mobile it is
@@ -57,12 +58,7 @@ export function Sidebar({
           {user.role === "SUPER_ADMIN" ? "Super Admin" : "Recruiter"}
         </p>
       </div>
-      <Link
-        href="/logout"
-        className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-white/70 hover:bg-white/10 hover:text-white"
-      >
-        <LogOut className="h-4 w-4" /> Sign out
-      </Link>
+      <LogoutButton />
     </div>
   );
 
