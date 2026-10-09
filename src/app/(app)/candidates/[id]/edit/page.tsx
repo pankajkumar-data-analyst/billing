@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import { notFound } from "next/navigation";
 import { requirePermission } from "@/lib/auth/guards";
 import { PERMISSIONS } from "@/lib/rbac";
 import { candidateScope } from "@/lib/scope";
