@@ -189,6 +189,20 @@ enum CorrectionStatus {
   REJECTED
 }
 
+// Company holidays (shown on the attendance calendar; excluded from payroll
+// working-day/LOP counts). `recurring` = same month+day every year.
+model Holiday {
+  id        String   @id @default(cuid())
+  date      DateTime @db.Date
+  name      String
+  recurring Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@unique([date, name])
+  @@index([date])
+  @@map("holidays")
+}
+
 // Attendance regularization request (spec §17). Employees cannot edit
 // attendance directly — they raise a correction for a date (wrong/missing
 // clock in/out) which an admin approves (applying the requested times to the

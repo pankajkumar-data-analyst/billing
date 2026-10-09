@@ -7,6 +7,7 @@ import { PERMISSIONS } from "@/lib/rbac";
 import { getSettings } from "@/lib/services/settings";
 import { calculatePayroll } from "@/lib/services/payroll";
 import { workingDaysInMonth, dayValueForStatus } from "@/lib/services/attendance";
+import { workingDayHolidayCount } from "@/lib/services/holidays";
 import { toDbString } from "@/lib/money";
 import { writeAudit, AUDIT } from "@/lib/auth/audit";
 import { Decimal } from "decimal.js";
@@ -27,7 +28,10 @@ export async function generatePayroll(
 
   const settings = await getSettings();
   const weeklyOff = settings.weeklyOff.split(",").map((s) => s.trim());
-  const workingDays = workingDaysInMonth(year, month, weeklyOff);
+  // Working days = calendar working days minus company holidays that land on a
+  // working day, so holidays are never counted as Loss of Pay.
+  const holidayCount = await workingDayHolidayCount(year, month, weeklyOff);
+  const workingDays = Math.max(1, workingDaysInMonth(year, month, weeklyOff) - holidayCount);
 
   const monthStart = new Date(year, month - 1, 1);
   const monthEnd = new Date(year, month, 0, 23, 59, 59);

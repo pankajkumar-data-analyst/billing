@@ -8,6 +8,10 @@ import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { Badge, statusTone } from "@/components/ui/badge";
 import { ClockWidget } from "./clock-widget";
 import { RegularizeForm, DecideRegularization } from "./regularize-forms";
+import { AttendanceCalendar, MonthNav, type DayCell } from "./attendance-calendar";
+import { HolidayForm, HolidayList } from "./holiday-forms";
+import { getSettings } from "@/lib/services/settings";
+import { holidaysInMonth } from "@/lib/services/holidays";
 import { formatDate, formatTime } from "@/lib/utils";
 import { formatWorkedDuration } from "@/lib/services/attendance";
 import { titleCase } from "@/lib/labels";
@@ -20,13 +24,16 @@ function todayDate(): Date {
   return d;
 }
 
-export default async function AttendancePage() {
+export default async function AttendancePage({ searchParams }: { searchParams: { y?: string; m?: string } }) {
   const user = await requireUser();
   const canSelf = hasPermission(user, PERMISSIONS.ATTENDANCE_SELF);
   const canManage = hasPermission(user, PERMISSIONS.ATTENDANCE_MANAGE);
   if (!canSelf && !canManage) redirect("/403");
 
   const today = todayDate();
+  const now = new Date();
+  const calYear = Number(searchParams.y) || now.getFullYear();
+  const calMonth = Number(searchParams.m) || now.getMonth() + 1; // 1-12
 
   // Self widget + history (if the user is an employee).
   let widget = null;
@@ -67,6 +74,58 @@ export default async function AttendancePage() {
     : [];
   const pendingCorrections = canManage
     ? await prisma.attendanceCorrection.findMany({ where: { status: "PENDING" }, include: { employee: true }, orderBy: { createdAt: "asc" } })
+    : [];
+
+  // ---- Calendar data for the selected month (employee's own) ----
+  const settings = await getSettings();
+  const weeklyOff = new Set(settings.weeklyOff.split(",").map((s) => s.trim()));
+  const DAY_ABBR = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const holidayMap = await holidaysInMonth(calYear, calMonth);
+  const daysInMonth = new Date(calYear, calMonth, 0).getDate();
+
+  const calDays: Record<number, DayCell> = {};
+  let monthAttendance: Awaited<ReturnType<typeof prisma.attendance.findMany>> = [];
+  if (canSelf && user.employeeId) {
+    monthAttendance = await prisma.attendance.findMany({
+      where: {
+        employeeId: user.employeeId,
+        date: { gte: new Date(calYear, calMonth - 1, 1), lte: new Date(calYear, calMonth, 0) },
+      },
+    });
+  }
+  const attByDay = new Map<number, (typeof monthAttendance)[number]>();
+  for (const a of monthAttendance) attByDay.set(a.date.getDate(), a);
+
+  const summary = { present: 0, half: 0, absent: 0, leave: 0, holiday: 0 };
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateKey = `${calYear}-${String(calMonth).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    const dow = new Date(calYear, calMonth - 1, d).getDay();
+    const isWeekend = weeklyOff.has(DAY_ABBR[dow]);
+    const holidayName = holidayMap.get(dateKey);
+    const att = attByDay.get(d);
+
+    let cell: DayCell;
+    if (att) {
+      cell = { status: att.status, workedLabel: att.workedMinutes > 0 ? formatWorkedDuration(att.workedMinutes) : null };
+      if (["PRESENT", "LATE"].includes(att.status)) summary.present++;
+      else if (att.status === "HALF_DAY") summary.half++;
+      else if (att.status === "ON_LEAVE") summary.leave++;
+      else summary.absent++;
+    } else if (holidayName) {
+      cell = { status: "HOLIDAY", holidayName };
+      summary.holiday++;
+    } else if (isWeekend) {
+      cell = { status: "WEEKEND" };
+    } else {
+      cell = { status: null };
+    }
+    calDays[d] = cell;
+  }
+
+  const allHolidays = canManage
+    ? (await prisma.holiday.findMany({ orderBy: { date: "asc" } })).map((h) => ({
+        id: h.id, date: h.date.toISOString(), name: h.name, recurring: h.recurring,
+      }))
     : [];
 
   return (
@@ -145,6 +204,35 @@ export default async function AttendancePage() {
                     <DecideRegularization id={c.id} />
                   </div>
                 ))}
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {canSelf && user.employeeId ? (
+            <Card className="mb-6">
+              <CardHeader className="flex-row items-center justify-between">
+                <CardTitle>My Attendance Calendar</CardTitle>
+                <MonthNav year={calYear} month={calMonth} />
+              </CardHeader>
+              <CardContent>
+                <div className="mb-4 flex flex-wrap gap-4 text-sm">
+                  <span>Present: <strong className="text-green-700">{summary.present}</strong></span>
+                  <span>Half: <strong className="text-amber-700">{summary.half}</strong></span>
+                  <span>Leave: <strong className="text-blue-700">{summary.leave}</strong></span>
+                  <span>Absent/Short: <strong className="text-red-700">{summary.absent}</strong></span>
+                  <span>Holidays: <strong className="text-purple-700">{summary.holiday}</strong></span>
+                </div>
+                <AttendanceCalendar year={calYear} month={calMonth} days={calDays} />
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {canManage ? (
+            <Card className="mb-6">
+              <CardHeader><CardTitle>Holidays</CardTitle></CardHeader>
+              <CardContent className="grid gap-6 md:grid-cols-2">
+                <HolidayForm />
+                <HolidayList holidays={allHolidays} />
               </CardContent>
             </Card>
           ) : null}
