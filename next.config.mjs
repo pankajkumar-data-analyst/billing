@@ -45,9 +45,29 @@ const nextConfig = {
     // Ensure the bundled PDF fonts + the logo are traced into the serverless
     // functions that render PDFs on Vercel (otherwise fs reads fail in prod).
     outputFileTracingIncludes: {
-      "/invoices/**": ["./src/lib/pdf/fonts/**", "./public/**"],
-      "/payroll/**": ["./src/lib/pdf/fonts/**", "./public/**"],
-      "/api/**": ["./src/lib/pdf/fonts/**", "./public/**"],
+      // Our bundled Noto fonts + logo, AND pdfkit's built-in standard fonts
+      // (Helvetica.cjs etc.). pdfkit always loads a standard font internally
+      // even when we register NotoSans, so these .cjs/.afm files MUST be traced
+      // into the serverless bundle or rendering throws "Cannot find module
+      // .../pdfkit/js/standard-fonts/Helvetica.cjs".
+      "/invoices/**": [
+        "./src/lib/pdf/fonts/**",
+        "./public/**",
+        "./node_modules/pdfkit/js/**",
+        "./node_modules/fontkit/**",
+      ],
+      "/payroll/**": [
+        "./src/lib/pdf/fonts/**",
+        "./public/**",
+        "./node_modules/pdfkit/js/**",
+        "./node_modules/fontkit/**",
+      ],
+      "/api/**": [
+        "./src/lib/pdf/fonts/**",
+        "./public/**",
+        "./node_modules/pdfkit/js/**",
+        "./node_modules/fontkit/**",
+      ],
     },
   },
 };
