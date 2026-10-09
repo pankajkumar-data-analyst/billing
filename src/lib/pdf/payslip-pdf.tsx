@@ -1,7 +1,7 @@
 import React from "react";
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 import { formatINR } from "@/lib/money";
-import { ensureFonts, nl, LogoMark, sharedStyles as sh, NAVY, MUTED } from "./shared";
+import { ensureFonts, nl, LogoMark, sharedStyles as sh, FONT_FAMILY, NAVY, MUTED } from "./shared";
 
 /**
  * Monthly payslip PDF (spec §21). Reuses the shared navy-header/logo/font
@@ -66,7 +66,7 @@ export function PayslipPdf({ company, payslip, footer }: PayslipPdfData) {
 
   return (
     <Document title={`Payslip ${payslip.employeeCode} ${period}`}>
-      <Page size="A4" style={sh.page}>
+      <Page size="A4" style={[sh.page, { fontFamily: FONT_FAMILY }]}>
         {/* Navy header band with logo */}
         <View style={sh.headerBand}>
           <View style={sh.headerLeft}>

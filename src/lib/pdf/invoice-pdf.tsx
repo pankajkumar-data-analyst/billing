@@ -1,62 +1,20 @@
 import React from "react";
-import path from "path";
-import fs from "fs";
-import { Document, Page, Text, View, StyleSheet, Font, Svg, Rect, Image } from "@react-pdf/renderer";
+import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 import { formatINR } from "@/lib/money";
 import { formatDate } from "@/lib/utils";
+import { ensureFonts, nl, LogoMark, FONT_FAMILY, NAVY, GOLD, MUTED } from "./shared";
 
 /**
- * Register Noto Sans (bundled in src/lib/pdf/fonts) so the PDF can render the
- * Indian Rupee sign (₹, U+20B9), the em-dash and other glyphs that the
- * built-in Helvetica font lacks. The fonts are shipped in the repo so this
- * works offline with no network fetch at render time.
+ * Professional invoice PDF (spec §12). Uses the shared PDF helpers (robust font
+ * loading with Helvetica fallback, ligature/dash fix, logo as data-URI) so it
+ * renders reliably on Vercel's serverless runtime.
  */
-let fontsRegistered = false;
-function ensureFonts() {
-  if (fontsRegistered) return;
-  const dir = path.join(process.cwd(), "src", "lib", "pdf", "fonts");
-  Font.register({
-    family: "NotoSans",
-    fonts: [
-      { src: path.join(dir, "NotoSans-Regular.ttf") },
-      { src: path.join(dir, "NotoSans-Bold.ttf"), fontWeight: "bold" },
-    ],
-  });
-  // Avoid hyphenation splitting words awkwardly.
-  Font.registerHyphenationCallback((word) => [word]);
-  fontsRegistered = true;
-}
-
-/**
- * Break OpenType ligatures (fi, ffi, fl, ff) by inserting a zero-width
- * non-joiner (U+200C) after an "f" that precedes i/l/f. Noto Sans otherwise
- * merges "fi" into a single ligature glyph whose dotless form made
- * "One2Infinite" render as "One2Infnite" and "office" as "ofce". This fix is
- * font- and version-independent. Apply it to every dynamic string shown.
- */
-function nl(value: unknown): string {
-  if (value === null || value === undefined) return "";
-  return String(value)
-    // Normalise em/en dashes to a plain hyphen (covers older saved data too).
-    .replace(/[\u2012\u2013\u2014\u2015]/g, "-")
-    // Break f-ligatures.
-    .replace(/f(?=[fil])/g, "f\u200C");
-}
-
-/**
- * Professional invoice PDF (spec §12). Server-rendered with @react-pdf/renderer
- * — no paid service. Content is driven entirely by data passed in (company +
- * invoice), so it reflects editable Settings, not hardcoded values.
- */
-
-const NAVY = "#1a1a2e";
-const GOLD = "#D4A017";
-const MUTED = "#777777";
 
 const s = StyleSheet.create({
   // No horizontal page padding so the navy header band can run edge-to-edge;
-  // body sections add their own horizontal padding (bodyPad).
-  page: { paddingTop: 0, paddingBottom: 40, fontSize: 10, color: "#333", fontFamily: "NotoSans" },
+  // body sections add their own horizontal padding (bodyPad). fontFamily is
+  // applied on <Page> at render time from FONT_FAMILY.
+  page: { paddingTop: 0, paddingBottom: 40, fontSize: 10, color: "#333" },
   bodyPad: { paddingHorizontal: 40 },
   // Dark header band — the transparent logo (gold X + white text) shows clearly
   // against navy.
@@ -94,39 +52,6 @@ const s = StyleSheet.create({
   statusBadge: { fontSize: 9, color: GOLD, fontWeight: "bold", textAlign: "right", marginTop: 4 },
 });
 
-// Resolve the real logo file (transparent PNG) if present, else fall back to
-// the vector mark. Computed once at module load.
-const LOGO_FILE = (() => {
-  const candidates = [
-    path.join(process.cwd(), "public", "One2infinite logo-600kb.png"),
-    path.join(process.cwd(), "public", "logo.png"),
-  ];
-  for (const p of candidates) {
-    try {
-      if (fs.existsSync(p)) return p;
-    } catch {
-      /* ignore */
-    }
-  }
-  return null;
-})();
-
-/**
- * Logo mark for the PDF header. Uses the owner's transparent PNG when
- * available (works on the white invoice); otherwise a reliable gold "X" vector.
- */
-function LogoMark() {
-  if (LOGO_FILE) {
-    return <Image src={LOGO_FILE} style={{ width: 60, height: 60, objectFit: "contain" }} />;
-  }
-  return (
-    <Svg width={34} height={34} viewBox="0 0 48 48">
-      <Rect x={4} y={21} width={40} height={8} rx={2} fill={GOLD} transform="rotate(-38 24 24)" />
-      <Rect x={4} y={21} width={40} height={8} rx={2} fill={GOLD} transform="rotate(38 24 24)" />
-    </Svg>
-  );
-}
-
 export interface InvoicePdfData {
   company: {
     name: string; address?: string | null; phone?: string | null; email?: string | null;
@@ -151,7 +76,7 @@ export function InvoicePdf({ company, invoice }: InvoicePdfData) {
   ensureFonts();
   return (
     <Document title={`Invoice ${invoice.number}`}>
-      <Page size="A4" style={s.page}>
+      <Page size="A4" style={[s.page, { fontFamily: FONT_FAMILY }]}>
         {/* Dark header band — logo shows clearly on navy */}
         <View style={s.headerBand}>
           <View style={s.headerLeft}>

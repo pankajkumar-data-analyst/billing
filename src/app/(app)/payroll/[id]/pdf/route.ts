@@ -36,7 +36,9 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     return new NextResponse("Forbidden", { status: 403 });
   }
 
-  const buffer = await renderToBuffer(
+  let buffer: Buffer;
+  try {
+    buffer = await renderToBuffer(
     PayslipPdf({
       company: {
         name: settings.companyName, address: settings.address,
@@ -66,7 +68,14 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       // Payslip-specific footer (not the invoice "thank you for your business").
       footer: `${settings.companyName} - Confidential. For queries, contact HR/Admin.`,
     }),
-  );
+    );
+  } catch (err) {
+    console.error("Payslip PDF generation failed", err);
+    return new NextResponse(
+      `PDF generation failed: ${err instanceof Error ? err.message : String(err)}`,
+      { status: 500 },
+    );
+  }
 
   return new NextResponse(new Uint8Array(buffer), {
     headers: {

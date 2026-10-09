@@ -27,7 +27,9 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   ]);
   if (!invoice) return new NextResponse("Not found", { status: 404 });
 
-  const buffer = await renderToBuffer(
+  let buffer: Buffer;
+  try {
+    buffer = await renderToBuffer(
     InvoicePdf({
       company: {
         name: settings.companyName, address: settings.address, phone: settings.phone,
@@ -49,7 +51,14 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
         })),
       },
     }),
-  );
+    );
+  } catch (err) {
+    console.error("Invoice PDF generation failed", err);
+    return new NextResponse(
+      `PDF generation failed: ${err instanceof Error ? err.message : String(err)}`,
+      { status: 500 },
+    );
+  }
 
   return new NextResponse(new Uint8Array(buffer), {
     headers: {

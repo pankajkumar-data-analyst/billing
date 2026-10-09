@@ -15,19 +15,74 @@ export const NAVY = "#1a1a2e";
 export const GOLD = "#D4A017";
 export const MUTED = "#777777";
 
+// Find a bundled file across the paths it may live at on dev vs. Vercel.
+function findFile(relPaths: string[]): string | null {
+  for (const rel of relPaths) {
+    const abs = path.isAbsolute(rel) ? rel : path.join(process.cwd(), rel);
+    try {
+      if (fs.existsSync(abs)) return abs;
+    } catch {
+      /* ignore */
+    }
+  }
+  return null;
+}
+
 let fontsRegistered = false;
+/** The font family to use ("NotoSans" if registered, else built-in Helvetica). */
+export let FONT_FAMILY = "Helvetica";
+
 export function ensureFonts() {
   if (fontsRegistered) return;
-  const dir = path.join(process.cwd(), "src", "lib", "pdf", "fonts");
-  Font.register({
-    family: "NotoSans",
-    fonts: [
-      { src: path.join(dir, "NotoSans-Regular.ttf") },
-      { src: path.join(dir, "NotoSans-Bold.ttf"), fontWeight: "bold" },
-    ],
-  });
-  Font.registerHyphenationCallback((word) => [word]);
-  fontsRegistered = true;
+  fontsRegistered = true; // only attempt once
+
+  const reg = findFile([
+    "src/lib/pdf/fonts/NotoSans-Regular.ttf",
+    "lib/pdf/fonts/NotoSans-Regular.ttf",
+    ".next/server/src/lib/pdf/fonts/NotoSans-Regular.ttf",
+  ]);
+  const bold = findFile([
+    "src/lib/pdf/fonts/NotoSans-Bold.ttf",
+    "lib/pdf/fonts/NotoSans-Bold.ttf",
+    ".next/server/src/lib/pdf/fonts/NotoSans-Bold.ttf",
+  ]);
+
+  if (reg && bold) {
+    // @react-pdf v4's font loader reads a string `src` as a filesystem path on
+    // Node. We resolve the file to an ABSOLUTE path (findFile already did) and
+    // register that — the most reliable method on Vercel's serverless Node
+    // runtime, provided the .ttf is traced into the bundle
+    // (next.config outputFileTracingIncludes). As a last resort we fall back to
+    // a base64 data-URI, then to built-in Helvetica.
+    const tryRegister = (regSrc: string, boldSrc: string): boolean => {
+      try {
+        Font.register({
+          family: "NotoSans",
+          fonts: [
+            { src: regSrc },
+            { src: boldSrc, fontWeight: "bold" },
+          ],
+        });
+        Font.registerHyphenationCallback((word) => [word]);
+        return true;
+      } catch {
+        return false;
+      }
+    };
+
+    const toDataUri = (p: string) =>
+      `data:font/ttf;base64,${fs.readFileSync(p).toString("base64")}`;
+
+    let ok = tryRegister(reg, bold);
+    if (!ok) {
+      try {
+        ok = tryRegister(toDataUri(reg), toDataUri(bold));
+      } catch {
+        ok = false;
+      }
+    }
+    FONT_FAMILY = ok ? "NotoSans" : "Helvetica"; // fall back; PDF still renders
+  }
 }
 
 /**
@@ -41,26 +96,23 @@ export function nl(value: unknown): string {
     .replace(/f(?=[fil])/g, "f\u200C");
 }
 
-// Resolve the owner's transparent PNG logo once at module load.
-const LOGO_FILE = (() => {
-  const candidates = [
-    path.join(process.cwd(), "public", "One2infinite logo-600kb.png"),
-    path.join(process.cwd(), "public", "logo.png"),
-  ];
-  for (const p of candidates) {
-    try {
-      if (fs.existsSync(p)) return p;
-    } catch {
-      /* ignore */
-    }
+// Resolve the logo once, as a base64 data-URI (most reliable for @react-pdf
+// Image on serverless — avoids any filesystem path lookup at render time).
+const LOGO_DATA_URI = (() => {
+  const file = findFile(["public/One2infinite logo-600kb.png", "public/logo.png"]);
+  if (!file) return null;
+  try {
+    const b64 = fs.readFileSync(file).toString("base64");
+    return `data:image/png;base64,${b64}`;
+  } catch {
+    return null;
   }
-  return null;
 })();
 
 /** Logo mark: real transparent PNG when present, else gold vector "X". */
 export function LogoMark({ size = 60 }: { size?: number }) {
-  if (LOGO_FILE) {
-    return <Image src={LOGO_FILE} style={{ width: size, height: size, objectFit: "contain" }} />;
+  if (LOGO_DATA_URI) {
+    return <Image src={LOGO_DATA_URI} style={{ width: size, height: size, objectFit: "contain" }} />;
   }
   return (
     <Svg width={size * 0.57} height={size * 0.57} viewBox="0 0 48 48">
@@ -72,7 +124,7 @@ export function LogoMark({ size = 60 }: { size?: number }) {
 
 /** Shared header-band + body styles so both documents look consistent. */
 export const sharedStyles = StyleSheet.create({
-  page: { paddingTop: 0, paddingBottom: 40, fontSize: 10, color: "#333", fontFamily: "NotoSans" },
+  page: { paddingTop: 0, paddingBottom: 40, fontSize: 10, color: "#333" },
   bodyPad: { paddingHorizontal: 40 },
   headerBand: {
     backgroundColor: NAVY,
