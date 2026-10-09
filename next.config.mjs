@@ -2,6 +2,19 @@
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // Force HTTPS: if a request arrives over http (x-forwarded-proto=http),
+  // 308-redirect to the https URL. Prevents the http/https protocol mismatch
+  // that breaks server actions / login.
+  async redirects() {
+    return [
+      {
+        source: "/:path*",
+        has: [{ type: "header", key: "x-forwarded-proto", value: "http" }],
+        destination: "https://app.one2infinite.com/:path*",
+        permanent: true,
+      },
+    ];
+  },
   // Security headers applied to every response. HTTPS is terminated by Vercel.
   async headers() {
     return [
