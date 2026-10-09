@@ -1,24 +1,52 @@
-import argon2 from "argon2";
+import { argon2id } from "@noble/hashes/argon2";
+import { randomBytes } from "crypto";
 
 /**
- * Password hashing with Argon2id (spec §29). Argon2id is memory-hard and the
- * current OWASP-recommended default for password storage.
+ * Password hashing with Argon2id (spec §29) using a PURE-JAVASCRIPT
+ * implementation (@noble/hashes). This avoids the native `argon2` package,
+ * whose prebuilt binary is platform-specific and fails on Vercel/Linux
+ * ("No native build was found for platform=linux"). Same algorithm, portable.
+ *
+ * Stored format (self-describing, pipe-separated):
+ *   argon2id|m|t|p|<saltB64>|<hashB64>
  */
 
-const OPTIONS: argon2.Options = {
-  type: argon2.argon2id,
-  memoryCost: 19456, // 19 MiB
-  timeCost: 2,
-  parallelism: 1,
-};
+const PARAMS = { m: 19456, t: 2, p: 1 }; // 19 MiB, 2 iters, 1 lane (OWASP-ish)
+const KEY_LEN = 32;
+const SALT_LEN = 16;
 
-export async function hashPassword(plain: string): Promise<string> {
-  return argon2.hash(plain, OPTIONS);
+function b64(buf: Uint8Array): string {
+  return Buffer.from(buf).toString("base64");
+}
+function fromB64(s: string): Uint8Array {
+  return new Uint8Array(Buffer.from(s, "base64"));
 }
 
-export async function verifyPassword(hash: string, plain: string): Promise<boolean> {
+export async function hashPassword(plain: string): Promise<string> {
+  const salt = new Uint8Array(randomBytes(SALT_LEN));
+  const hash = argon2id(plain, salt, { m: PARAMS.m, t: PARAMS.t, p: PARAMS.p, dkLen: KEY_LEN });
+  return `argon2id|${PARAMS.m}|${PARAMS.t}|${PARAMS.p}|${b64(salt)}|${b64(hash)}`;
+}
+
+/** Constant-time comparison of two byte arrays. */
+function timingSafeEqual(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
+  return diff === 0;
+}
+
+export async function verifyPassword(stored: string, plain: string): Promise<boolean> {
   try {
-    return await argon2.verify(hash, plain);
+    const parts = stored.split("|");
+    if (parts.length !== 6 || parts[0] !== "argon2id") return false;
+    const m = Number(parts[1]);
+    const t = Number(parts[2]);
+    const p = Number(parts[3]);
+    const salt = fromB64(parts[4]);
+    const expected = fromB64(parts[5]);
+    const actual = argon2id(plain, salt, { m, t, p, dkLen: expected.length });
+    return timingSafeEqual(actual, expected);
   } catch {
     return false;
   }

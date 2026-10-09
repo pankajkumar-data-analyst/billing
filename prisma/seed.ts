@@ -10,7 +10,7 @@
  * Demo clients are named "DEMO ..." so they are easy to spot and delete.
  */
 import { PrismaClient, Prisma } from "@prisma/client";
-import argon2 from "argon2";
+import { hashPassword } from "../src/lib/auth/password";
 import { Decimal } from "decimal.js";
 import {
   ALL_PERMISSIONS, RECRUITER_PERMISSIONS, PERMISSION_DESCRIPTIONS, ROLES,
@@ -19,7 +19,7 @@ import {
 const prisma = new PrismaClient();
 
 async function hash(pw: string) {
-  return argon2.hash(pw, { type: argon2.argon2id, memoryCost: 19456, timeCost: 2, parallelism: 1 });
+  return hashPassword(pw);
 }
 
 function money(n: number): Prisma.Decimal {

@@ -41,7 +41,7 @@ const nextConfig = {
   // Next.js 14 uses experimental.serverComponentsExternalPackages
   // (renamed to top-level serverExternalPackages in Next 15).
   experimental: {
-    serverComponentsExternalPackages: ["@react-pdf/renderer", "argon2"],
+    serverComponentsExternalPackages: ["@react-pdf/renderer"],
     // Ensure the bundled PDF fonts + the logo are traced into the serverless
     // functions that render PDFs on Vercel (otherwise fs reads fail in prod).
     outputFileTracingIncludes: {
