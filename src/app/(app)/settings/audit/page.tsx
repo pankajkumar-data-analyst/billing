@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 export default async function AuditLogPage() {
   await requirePermission(PERMISSIONS.AUDIT_VIEW);
   const logs = await prisma.auditLog.findMany({
-    include: { user: { include: { employee: true } } },
+    include: { user: true },
     orderBy: { createdAt: "desc" },
     take: 200,
   });
@@ -30,7 +30,7 @@ export default async function AuditLogPage() {
               logs.map((l) => (
                 <TR key={l.id}>
                   <TD className="whitespace-nowrap">{formatDateTime(l.createdAt)}</TD>
-                  <TD>{l.user?.employee?.name ?? l.user?.email ?? "-"}</TD>
+                  <TD>{l.user?.name ?? l.user?.email ?? "-"}</TD>
                   <TD>{titleCase(l.action)}</TD>
                   <TD>{l.entity ? `${l.entity}${l.entityId ? ` (${l.entityId.slice(0, 8)}…)` : ""}` : "-"}</TD>
                   <TD>{l.ip ?? "-"}</TD>

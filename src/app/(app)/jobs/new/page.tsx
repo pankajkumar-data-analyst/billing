@@ -11,7 +11,7 @@ export default async function NewJobPage() {
   await requirePermission(PERMISSIONS.JOB_MANAGE);
   const [clients, recruiters] = await Promise.all([
     prisma.client.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
-    prisma.employee.findMany({ where: { status: "ACTIVE" }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    prisma.user.findMany({ where: { isActive: true }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
   ]);
   return (
     <div>

@@ -33,15 +33,6 @@ const schema = z.object({
   defaultFeePercent: z.coerce.number().min(0),
   invoiceFooter: z.string().optional(),
   invoiceEmailTemplate: z.string().optional(),
-  officeStartTime: z.string(),
-  officeEndTime: z.string(),
-  graceMinutes: z.coerce.number().int().min(0),
-  halfDayHours: z.coerce.number().min(0),
-  fullDayHours: z.coerce.number().min(0),
-  weeklyOff: z.string().optional(),
-  leaveQuotaCasual: z.coerce.number().min(0).default(12),
-  leaveQuotaSick: z.coerce.number().min(0).default(6),
-  leaveQuotaPaid: z.coerce.number().min(0).default(12),
 });
 
 export async function updateSettings(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -61,12 +52,6 @@ export async function updateSettings(_prev: ActionState, formData: FormData): Pr
       defaultPaymentDays: d.defaultPaymentDays, defaultReplacementDays: d.defaultReplacementDays,
       defaultFeePercent: toDbString(d.defaultFeePercent),
       invoiceFooter: d.invoiceFooter, invoiceEmailTemplate: d.invoiceEmailTemplate,
-      officeStartTime: d.officeStartTime, officeEndTime: d.officeEndTime, graceMinutes: d.graceMinutes,
-      halfDayHours: toDbString(d.halfDayHours), fullDayHours: toDbString(d.fullDayHours),
-      weeklyOff: d.weeklyOff || "Sun",
-      leaveQuotaCasual: toDbString(d.leaveQuotaCasual),
-      leaveQuotaSick: toDbString(d.leaveQuotaSick),
-      leaveQuotaPaid: toDbString(d.leaveQuotaPaid),
     },
   });
 

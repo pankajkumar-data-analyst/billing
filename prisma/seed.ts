@@ -3,10 +3,10 @@
  *  - Roles + permissions (always; idempotent)
  *  - Company settings singleton
  *  - Bootstrap Super Admin (from SEED_ADMIN_* env)
- *  - DEMO DATA (only when SEED_DEMO=1): 3 employees, 5 clients, 5 jobs,
- *    15 candidates, 5 placements, 5 invoices, payments, attendance, payroll.
+ *  - DEMO DATA (only when SEED_DEMO=1): 2 recruiter users, 5 clients, 5 jobs,
+ *    15 candidates, 5 placements, 5 invoices and payments.
  *
- * ALL demo data is fictional. No real candidate/client/employee information.
+ * ALL demo data is fictional. No real candidate/client information.
  * Demo clients are named "DEMO ..." so they are easy to spot and delete.
  */
 import { PrismaClient, Prisma } from "@prisma/client";
@@ -88,13 +88,6 @@ async function seedSettings() {
       invoiceFooter: "Thank you for your business.",
       invoiceEmailTemplate:
         "Dear [Client Name],\n\nPlease find attached our recruitment invoice for the successful placement of [Candidate Name] for the position of [Job Title].\n\nInvoice No: [Invoice Number]\nAmount: [Amount]\nDue Date: [Due Date]\n\nKindly process the payment as per the agreed terms.\n\nRegards,\nOne2Infinite Recruitment Solutions",
-      officeStartTime: "10:00",
-      officeEndTime: "18:00",
-      graceMinutes: 15,
-      halfDayHours: money(4),
-      fullDayHours: money(7),
-      workingDaysPerWeek: 5,
-      weeklyOff: "Sat,Sun",
     },
   });
 }
@@ -116,16 +109,8 @@ async function seedAdmin(adminRoleId: string) {
     console.log(`Admin ${email} already exists — skipping.`);
     return;
   }
-  // The User<->Employee relation is owned by Employee (employee.userId),
-  // so create the User first, then the Employee linked to it.
-  const user = await prisma.user.create({
-    data: { email, passwordHash: await hash(password), roleId: adminRoleId },
-  });
-  await prisma.employee.create({
-    data: {
-      name, employeeCode: "OI-001", designation: "Founder / Owner", department: "Management",
-      status: "ACTIVE", joiningDate: new Date("2024-01-01"), userId: user.id,
-    },
+  await prisma.user.create({
+    data: { email, name, passwordHash: await hash(password), roleId: adminRoleId },
   });
   console.log(`Created Super Admin: ${email} (password from SEED_ADMIN_PASSWORD).`);
 }
@@ -141,18 +126,17 @@ async function seedDemo(recruiterRoleId: string) {
   }
   console.log("Seeding DEMO data (fictional)…");
 
-  // 3 employees (2 recruiters with logins + the admin already created)
+  // 2 demo recruiter users with logins (recruiter = a User now).
   const recNames = ["Demo Recruiter A", "Demo Recruiter B"];
   const recruiters = [];
   for (let i = 0; i < recNames.length; i++) {
-    const emp = await prisma.employee.create({
+    const u = await prisma.user.create({
       data: {
-        name: recNames[i], employeeCode: `OI-10${i + 1}`, designation: "Recruiter", department: "Recruitment",
-        status: "ACTIVE", joiningDate: new Date("2025-04-01"), monthlySalary: money(25000 + i * 5000),
-        user: { create: { email: `recruiter${i + 1}@one2infinite.demo`, passwordHash: await hash("DemoPass!2026"), roleId: recruiterRoleId } },
+        name: recNames[i], email: `recruiter${i + 1}@one2infinite.demo`,
+        passwordHash: await hash("DemoPass!2026"), roleId: recruiterRoleId,
       },
     });
-    recruiters.push(emp);
+    recruiters.push(u);
   }
 
   // 5 clients with varied fee terms
@@ -283,24 +267,6 @@ async function seedDemo(recruiterRoleId: string) {
       await prisma.payment.create({ data: { invoiceId: invoice.id, clientId: client.id, amount: money(part), paymentDate: new Date(), mode: "UPI", reference: `DEMO-UPI-${i}`, recordedById: (await adminUserId()) } });
       await prisma.invoice.update({ where: { id: invoice.id }, data: { amountPaid: money(part), status: "PARTIALLY_PAID" } });
     }
-  }
-
-  // Sample attendance for recruiters (last 5 days)
-  for (const rec of recruiters) {
-    for (let d = 1; d <= 5; d++) {
-      const date = new Date(); date.setDate(date.getDate() - d); date.setHours(0, 0, 0, 0);
-      if (date.getDay() === 0) continue; // skip Sunday
-      const inT = new Date(date); inT.setHours(10, 2, 0, 0);
-      const outT = new Date(date); outT.setHours(19, 5, 0, 0);
-      await prisma.attendance.create({
-        data: { employeeId: rec.id, date, clockIn: inT, clockOut: outT, workedMinutes: 543, status: "PRESENT" },
-      });
-    }
-  }
-
-  // Sample expenses
-  for (const [cat, amt] of [["Naukri", 8000], ["LinkedIn", 6000], ["Office", 3500]] as const) {
-    await prisma.expense.create({ data: { expenseDate: new Date(), category: cat, amount: money(amt), vendor: `${cat} Vendor` } });
   }
 
   console.log(`Demo data seeded: ${clients.length} clients, ${jobs.length} jobs, ${candidates.length} candidates, ${placements.length} placements.`);

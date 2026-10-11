@@ -25,4 +25,3 @@ export const JOB_STATUSES = [
 ] as const;
 
 export const PAYMENT_MODES = ["BANK_TRANSFER", "UPI", "CASH", "CHEQUE", "OTHER"] as const;
-export const LEAVE_TYPES = ["CASUAL", "SICK", "PAID", "UNPAID", "OTHER"] as const;

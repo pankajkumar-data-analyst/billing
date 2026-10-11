@@ -10,9 +10,8 @@ export async function getAdminDashboard() {
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const yearStart = new Date(now.getFullYear(), 0, 1);
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-  const [invoices, payments, placements, clients, jobs, pipeline, employees, attendanceToday, expensesMonth, payslipsMonth] =
+  const [invoices, payments, placements, clients, jobs, pipeline] =
     await Promise.all([
       prisma.invoice.findMany({ select: { total: true, amountPaid: true, status: true, invoiceDate: true } }),
       prisma.payment.findMany({ where: { isReversed: false }, select: { amount: true, paymentDate: true } }),
@@ -20,10 +19,6 @@ export async function getAdminDashboard() {
       prisma.client.count({ where: { status: "ACTIVE" } }),
       prisma.job.count({ where: { status: { in: ["NEW", "ACTIVE", "ON_HOLD", "INTERVIEWING", "SUBMITTED"] } } }),
       prisma.candidateApplication.groupBy({ by: ["stage"], _count: true }),
-      prisma.employee.count({ where: { status: "ACTIVE" } }),
-      prisma.attendance.findMany({ where: { date: today }, select: { status: true } }),
-      prisma.expense.findMany({ where: { expenseDate: { gte: monthStart } }, select: { amount: true } }),
-      prisma.payslip.findMany({ where: { periodYear: now.getFullYear(), periodMonth: now.getMonth() + 1 }, select: { netSalary: true } }),
     ]);
 
   // Financial sums exclude CANCELLED invoices; the status pie uses all.
@@ -37,15 +32,6 @@ export async function getAdminDashboard() {
 
   const paidInvoices = liveInvoices.filter((i) => i.status === "PAID").length;
   const placementsThisMonth = placements.filter((p) => p.joiningDate >= monthStart).length;
-
-  const present = attendanceToday.filter((a) => ["PRESENT", "LATE", "HALF_DAY"].includes(a.status)).length;
-  const onLeave = attendanceToday.filter((a) => a.status === "ON_LEAVE").length;
-  const absent = Math.max(0, employees - present - onLeave);
-
-  const expensesMonthTotal = sum(expensesMonth.map((e) => e.amount));
-  const payrollMonthTotal = sum(payslipsMonth.map((p) => p.netSalary));
-  // Estimated net profit = collected this month - expenses - payroll (indicative).
-  const estimatedProfit = subtract(subtract(revenueThisMonth, expensesMonthTotal), payrollMonthTotal);
 
   // Monthly revenue trend (last 6 months) from collected payments.
   const trend: { label: string; value: number }[] = [];
@@ -73,11 +59,6 @@ export async function getAdminDashboard() {
       activeJobs: jobs,
       candidatesInPipeline: pipelineCounts.filter((p) => !["JOINED", "REJECTED", "DROPPED", "REPLACED"].includes(p.stage)).reduce((a, b) => a + b.count, 0),
       placementsThisMonth,
-      employeesPresent: present,
-      employeesAbsent: absent,
-      currentMonthPayroll: payrollMonthTotal,
-      currentMonthExpenses: expensesMonthTotal,
-      estimatedNetProfit: estimatedProfit,
     },
     charts: {
       revenueTrend: trend,

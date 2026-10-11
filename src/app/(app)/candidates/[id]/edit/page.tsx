@@ -14,7 +14,7 @@ export default async function EditCandidatePage({ params }: { params: { id: stri
   const [candidate, recruiters] = await Promise.all([
     // Scoped so a recruiter can't open the edit form for another's candidate.
     prisma.candidate.findFirst({ where: { AND: [{ id: params.id }, candidateScope(user)] } }),
-    prisma.employee.findMany({ where: { status: "ACTIVE" }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    prisma.user.findMany({ where: { isActive: true }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
   ]);
   if (!candidate) notFound();
 

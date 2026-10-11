@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 export default async function PaymentsPage() {
   const user = await requirePermission(PERMISSIONS.PAYMENT_VIEW);
   const payments = await prisma.payment.findMany({
-    include: { invoice: true, client: true, recordedBy: { include: { employee: true } } },
+    include: { invoice: true, client: true, recordedBy: true },
     orderBy: { paymentDate: "desc" },
     take: 200,
   });
@@ -46,7 +46,7 @@ export default async function PaymentsPage() {
                   <TD className={p.isReversed ? "text-muted-foreground line-through" : "font-medium"}>{formatINR(p.amount)}</TD>
                   <TD>{titleCase(p.mode)}</TD>
                   <TD>{p.reference ?? "-"}</TD>
-                  <TD>{p.recordedBy.employee?.name ?? p.recordedBy.email}{p.isReversed ? <Badge tone="danger" className="ml-2">Reversed</Badge> : null}</TD>
+                  <TD>{p.recordedBy.name ?? p.recordedBy.email}{p.isReversed ? <Badge tone="danger" className="ml-2">Reversed</Badge> : null}</TD>
                 </TR>
               ))
             )}

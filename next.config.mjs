@@ -49,20 +49,9 @@ const nextConfig = {
       // (Helvetica.cjs etc.). pdfkit always loads a standard font internally
       // even when we register NotoSans, so these .cjs/.afm files MUST be traced
       // into the serverless bundle or rendering throws "Cannot find module
-      // .../pdfkit/js/standard-fonts/Helvetica.cjs".
+      // .../pdfkit/js/standard-fonts/Helvetica.cjs". Only the invoice PDF route
+      // remains (payslip PDF was removed with the payroll module).
       "/invoices/**": [
-        "./src/lib/pdf/fonts/**",
-        "./public/**",
-        "./node_modules/pdfkit/js/**",
-        "./node_modules/fontkit/**",
-      ],
-      "/payroll/**": [
-        "./src/lib/pdf/fonts/**",
-        "./public/**",
-        "./node_modules/pdfkit/js/**",
-        "./node_modules/fontkit/**",
-      ],
-      "/api/**": [
         "./src/lib/pdf/fonts/**",
         "./public/**",
         "./node_modules/pdfkit/js/**",

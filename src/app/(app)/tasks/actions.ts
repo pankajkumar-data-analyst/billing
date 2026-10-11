@@ -27,8 +27,8 @@ export async function createTask(_prev: ActionState, formData: FormData): Promis
   await prisma.task.create({
     data: {
       title: d.title,
-      // Default: assign to self (if the user is an employee) unless chosen.
-      assigneeId: d.assigneeId || user.employeeId || null,
+      // Default: assign to self unless a specific assignee is chosen.
+      assigneeId: d.assigneeId || user.id || null,
       dueDate: d.dueDate ? new Date(d.dueDate) : null,
       priority: d.priority,
       notes: d.notes,
@@ -47,7 +47,7 @@ export async function toggleTask(taskId: string): Promise<void> {
   const task = await prisma.task.findUnique({ where: { id: taskId } });
   if (!task) return;
   const isAdmin = user.permissions.includes(PERMISSIONS.USER_MANAGE);
-  const isOwner = task.assigneeId && task.assigneeId === user.employeeId;
+  const isOwner = task.assigneeId && task.assigneeId === user.id;
   if (!isAdmin && !isOwner) return; // server-side scope
 
   await prisma.task.update({

@@ -8,16 +8,14 @@ import { PageHeader } from "@/components/app/page-header";
 import { KpiCard } from "@/components/app/kpi-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RevenueTrendChart, PipelineChart, StatusPie, RevenueByClientChart } from "@/components/app/charts";
-import { ClockWidget } from "../attendance/clock-widget";
-import { buttonVariants } from "@/components/ui/button";
-import { formatINRCompact, formatINR } from "@/lib/money";
+import { formatINRCompact } from "@/lib/money";
 import { formatDate } from "@/lib/utils";
 import { titleCase } from "@/lib/labels";
 import { guaranteeState } from "@/lib/services/guarantee";
 import { Badge, statusTone } from "@/components/ui/badge";
 import {
-  Wallet, TrendingUp, TrendingDown, Clock, AlertTriangle, FileText, Building2,
-  Briefcase, Users, UserCheck, CalendarClock, Banknote, Receipt,
+  Wallet, TrendingUp, Clock, AlertTriangle, FileText, Building2,
+  Briefcase, Users, UserCheck,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +25,7 @@ export default async function DashboardPage() {
   const isAdminView = hasPermission(user, PERMISSIONS.DASHBOARD_ADMIN_VIEW);
 
   if (isAdminView) return <AdminDashboard />;
-  return <EmployeeDashboard userId={user.id} name={user.name} employeeId={user.employeeId} />;
+  return <StaffDashboard userId={user.id} />;
 }
 
 async function AdminDashboard() {
@@ -62,19 +60,6 @@ async function AdminDashboard() {
         <KpiCard label="Active Jobs" value={String(kpis.activeJobs)} href="/jobs" icon={Briefcase} />
         <KpiCard label="Candidates in Pipeline" value={String(kpis.candidatesInPipeline)} href="/candidates" icon={Users} />
         <KpiCard label="Placements This Month" value={String(kpis.placementsThisMonth)} href="/placements" icon={UserCheck} />
-        <KpiCard label="Present Today" value={String(kpis.employeesPresent)} hint={`${kpis.employeesAbsent} absent`} href="/attendance" icon={CalendarClock} />
-        <KpiCard label="Month Payroll" value={formatINRCompact(kpis.currentMonthPayroll)} href="/payroll" icon={Banknote} />
-        <KpiCard label="Month Expenses" value={formatINRCompact(kpis.currentMonthExpenses)} href="/expenses" icon={Receipt} />
-      </div>
-
-      <div className="mb-6">
-        <KpiCard
-          label="Estimated Net Profit (This Month)"
-          value={formatINR(kpis.estimatedNetProfit)}
-          hint="Collected - expenses - payroll (indicative)"
-          tone={kpis.estimatedNetProfit.isNegative() ? "danger" : "success"}
-          icon={kpis.estimatedNetProfit.isNegative() ? TrendingDown : TrendingUp}
-        />
       </div>
 
       <div className="mb-6 grid gap-6 lg:grid-cols-2">
@@ -116,57 +101,32 @@ async function AdminDashboard() {
   );
 }
 
-async function EmployeeDashboard({ name, employeeId }: { userId: string; name: string; employeeId: string | null }) {
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-
-  const [todayRow, assignedJobs, pendingLeave] = employeeId
-    ? await Promise.all([
-        prisma.attendance.findUnique({ where: { employeeId_date: { employeeId, date: today } } }),
-        prisma.job.findMany({ where: { recruiterId: employeeId, status: { in: ["NEW", "ACTIVE", "ON_HOLD", "INTERVIEWING", "SUBMITTED"] } }, include: { client: true }, take: 10 }),
-        prisma.leaveRequest.count({ where: { employeeId, status: "PENDING" } }),
-      ])
-    : [null, [], 0];
+async function StaffDashboard({ userId }: { userId: string }) {
+  // Jobs assigned to this user, plus any jobs they created context for.
+  const assignedJobs = await prisma.job.findMany({
+    where: { recruiterId: userId, status: { in: ["NEW", "ACTIVE", "ON_HOLD", "INTERVIEWING", "SUBMITTED"] } },
+    include: { client: true },
+    take: 15,
+  });
 
   return (
     <div>
       <PageHeader title="Dashboard" />
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-1 space-y-6">
-          {employeeId ? (
-            <ClockWidget
-              name={name}
-              clockInAt={todayRow?.clockIn ? todayRow.clockIn.toISOString() : null}
-              clockOutAt={todayRow?.clockOut ? todayRow.clockOut.toISOString() : null}
-              workedMinutes={todayRow?.workedMinutes ?? 0}
-            />
+      <Card>
+        <CardHeader><CardTitle>My Assigned Jobs</CardTitle></CardHeader>
+        <CardContent className="space-y-2">
+          {assignedJobs.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No active jobs assigned to you.</p>
           ) : (
-            <Card><CardContent className="pt-5 text-sm text-muted-foreground">No employee profile is linked to your account.</CardContent></Card>
+            assignedJobs.map((j) => (
+              <div key={j.id} className="flex items-center justify-between border-b py-2 last:border-0">
+                <Link href={`/jobs/${j.id}`} className="text-sm font-medium text-navy hover:underline">{j.title}</Link>
+                <span className="text-xs text-muted-foreground">{j.client.name}</span>
+              </div>
+            ))
           )}
-          <Card>
-            <CardContent className="pt-5">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Pending Leave Requests</p>
-              <p className="mt-1 text-2xl font-bold text-navy">{pendingLeave}</p>
-              <Link href="/leave" className={buttonVariants({ variant: "outline", size: "sm", className: "mt-3" })}>Manage Leave</Link>
-            </CardContent>
-          </Card>
-        </div>
-
-        <Card className="lg:col-span-2">
-          <CardHeader><CardTitle>My Assigned Jobs</CardTitle></CardHeader>
-          <CardContent className="space-y-2">
-            {assignedJobs.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No active jobs assigned to you.</p>
-            ) : (
-              assignedJobs.map((j) => (
-                <div key={j.id} className="flex items-center justify-between border-b py-2 last:border-0">
-                  <Link href={`/jobs/${j.id}`} className="text-sm font-medium text-navy hover:underline">{j.title}</Link>
-                  <span className="text-xs text-muted-foreground">{j.client.name}</span>
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

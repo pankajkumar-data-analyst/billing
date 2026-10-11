@@ -27,6 +27,7 @@ datasource db {
 model User {
   id               String    @id @default(cuid())
   email            String    @unique
+  name             String    @default("User") // display name (was previously on Employee)
   passwordHash     String
   isActive         Boolean   @default(true)
   // Brute-force protection
@@ -40,13 +41,17 @@ model User {
   roleId String
   role   Role   @relation(fields: [roleId], references: [id])
 
-  employee     Employee?
   auditLogs    AuditLog[]
   payments     Payment[]      @relation("PaymentRecordedBy")
   uploads      Document[]     @relation("DocumentUploadedBy")
-  decisions    LeaveRequest[] @relation("LeaveDecidedBy")
-  correctionDecisions AttendanceCorrection[] @relation("CorrectionDecidedBy")
   notifications Notification[]
+
+  // A user can be the assigned recruiter on jobs/candidates/applications and
+  // the assignee on tasks (previously these pointed to Employee).
+  jobs         Job[]                  @relation("JobRecruiter")
+  candidates   Candidate[]            @relation("CandidateRecruiter")
+  applications CandidateApplication[] @relation("ApplicationRecruiter")
+  tasks        Task[]                 @relation("TaskAssignee")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -89,237 +94,13 @@ model RolePermission {
   @@map("role_permissions")
 }
 
-// ---------------------------------------------------------------------------
-// EMPLOYEES / HR
-// ---------------------------------------------------------------------------
-
+// Employment type — used by Job. (The HR/Employee/Attendance/Payroll/Leave/
+// Expense models were removed; this enum stays because Job references it.)
 enum EmploymentType {
   FULL_TIME
   PART_TIME
   CONTRACT
   INTERN
-}
-
-enum EmployeeStatus {
-  ACTIVE
-  INACTIVE
-  ON_NOTICE
-  EXITED
-}
-
-model Employee {
-  id             String         @id @default(cuid())
-  employeeCode   String         @unique
-  name           String
-  phone          String?
-  designation    String?
-  department     String?
-  joiningDate    DateTime?
-  employmentType EmploymentType @default(FULL_TIME)
-  status         EmployeeStatus @default(ACTIVE)
-
-  // SENSITIVE — Admin-only. Never exposed to ordinary employees via API/UI.
-  monthlySalary Decimal? @db.Decimal(12, 2)
-  bankName      String?
-  bankAccount   String?
-  bankIfsc      String?
-  pan           String?
-
-  emergencyContact String?
-  address          String?
-  photoRef         String? // storage reference, served via signed URL only
-
-  userId String? @unique
-  user   User?   @relation(fields: [userId], references: [id])
-
-  attendance    Attendance[]
-  leaveRequests LeaveRequest[]
-  leaveBalances LeaveBalance[]
-  corrections   AttendanceCorrection[]
-  payslips      Payslip[]
-  jobs          Job[]          @relation("JobRecruiter")
-  candidates    Candidate[]    @relation("CandidateRecruiter")
-  applications  CandidateApplication[] @relation("ApplicationRecruiter")
-  tasks         Task[]         @relation("TaskAssignee")
-  expenses      Expense[]      @relation("ExpenseEmployee")
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([status])
-  @@map("employees")
-}
-
-enum AttendanceStatus {
-  PRESENT
-  ABSENT
-  LATE
-  HALF_DAY
-  SHORT
-  ON_LEAVE
-  HOLIDAY
-  WEEKEND
-}
-
-model Attendance {
-  id           String           @id @default(cuid())
-  employeeId   String
-  employee     Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  date         DateTime         @db.Date
-  clockIn      DateTime?
-  clockOut     DateTime?
-  workedMinutes Int             @default(0)
-  status       AttendanceStatus @default(PRESENT)
-  isLate       Boolean          @default(false)
-  // Light device/context metadata (no precise location unless explicitly enabled)
-  clockInIp    String?
-  note         String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([employeeId, date])
-  @@index([date])
-  @@map("attendance")
-}
-
-enum CorrectionStatus {
-  PENDING
-  APPROVED
-  REJECTED
-}
-
-// Company holidays (shown on the attendance calendar; excluded from payroll
-// working-day/LOP counts). `recurring` = same month+day every year.
-model Holiday {
-  id        String   @id @default(cuid())
-  date      DateTime @db.Date
-  name      String
-  recurring Boolean  @default(false)
-  createdAt DateTime @default(now())
-
-  @@unique([date, name])
-  @@index([date])
-  @@map("holidays")
-}
-
-// Attendance regularization request (spec §17). Employees cannot edit
-// attendance directly — they raise a correction for a date (wrong/missing
-// clock in/out) which an admin approves (applying the requested times to the
-// attendance row and recomputing status) or rejects. Full audit trail.
-model AttendanceCorrection {
-  id             String           @id @default(cuid())
-  employeeId     String
-  employee       Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  date           DateTime         @db.Date
-  requestedIn    DateTime?        // requested clock-in time
-  requestedOut   DateTime?        // requested clock-out time
-  reason         String
-  status         CorrectionStatus @default(PENDING)
-  decidedById    String?
-  decidedBy      User?            @relation("CorrectionDecidedBy", fields: [decidedById], references: [id])
-  decidedAt      DateTime?
-  decisionNote   String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([employeeId])
-  @@index([status])
-  @@map("attendance_corrections")
-}
-
-enum LeaveType {
-  CASUAL
-  SICK
-  PAID
-  UNPAID
-  OTHER
-}
-
-enum LeaveStatus {
-  PENDING
-  APPROVED
-  REJECTED
-  CANCELLED
-}
-
-model LeaveRequest {
-  id          String      @id @default(cuid())
-  employeeId  String
-  employee    Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  type        LeaveType
-  fromDate    DateTime    @db.Date
-  toDate      DateTime    @db.Date
-  days        Decimal     @db.Decimal(4, 1) // supports half-days (0.5)
-  reason      String?
-  status      LeaveStatus @default(PENDING)
-  decidedById String?
-  decidedBy   User?       @relation("LeaveDecidedBy", fields: [decidedById], references: [id])
-  decidedAt   DateTime?
-  decisionNote String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([employeeId])
-  @@index([status])
-  @@map("leave_requests")
-}
-
-// Per-employee, per-year leave quota + usage (spec §19). One row per
-// employee+year+type. `used` is incremented when a request is APPROVED and
-// decremented if that approval is later reversed/cancelled.
-model LeaveBalance {
-  id         String    @id @default(cuid())
-  employeeId String
-  employee   Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  year       Int
-  type       LeaveType
-  allocated  Decimal   @db.Decimal(5, 1) @default(0)
-  used       Decimal   @db.Decimal(5, 1) @default(0)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([employeeId, year, type])
-  @@index([employeeId, year])
-  @@map("leave_balances")
-}
-
-enum PayrollStatus {
-  DRAFT
-  APPROVED
-  PAID
-}
-
-model Payslip {
-  id          String        @id @default(cuid())
-  employeeId  String
-  employee    Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  periodYear  Int
-  periodMonth Int // 1-12
-  workingDays Int
-  presentDays Decimal       @db.Decimal(5, 1)
-  extraDays   Decimal       @db.Decimal(5, 1) @default(0) // weekend/holiday days worked
-  paidLeave   Decimal       @db.Decimal(5, 1) @default(0)
-  unpaidLeave Decimal       @db.Decimal(5, 1) @default(0)
-  lopDays     Decimal       @db.Decimal(5, 1) @default(0)
-  grossSalary Decimal       @db.Decimal(12, 2)
-  lopAmount   Decimal       @db.Decimal(12, 2) @default(0)
-  extraPay    Decimal       @db.Decimal(12, 2) @default(0) // pay for weekend/holiday work
-  bonus       Decimal       @db.Decimal(12, 2) @default(0)
-  deductions  Decimal       @db.Decimal(12, 2) @default(0)
-  netSalary   Decimal       @db.Decimal(12, 2)
-  status      PayrollStatus @default(DRAFT)
-  note        String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([employeeId, periodYear, periodMonth])
-  @@index([periodYear, periodMonth])
-  @@map("payslips")
 }
 
 // ---------------------------------------------------------------------------
@@ -449,7 +230,7 @@ model Job {
   preferredSkills String?
   jd             String?
   recruiterId    String?
-  recruiter      Employee?      @relation("JobRecruiter", fields: [recruiterId], references: [id])
+  recruiter      User?          @relation("JobRecruiter", fields: [recruiterId], references: [id])
   dateReceived   DateTime       @default(now())
   targetCloseDate DateTime?
   priority       JobPriority    @default(MEDIUM)
@@ -487,7 +268,7 @@ model Candidate {
   resumeRef         String? // storage reference, signed URL only
   source            String?
   recruiterId       String?
-  recruiter         Employee? @relation("CandidateRecruiter", fields: [recruiterId], references: [id])
+  recruiter         User?     @relation("CandidateRecruiter", fields: [recruiterId], references: [id])
   notes             String?
 
   applications CandidateApplication[]
@@ -526,7 +307,7 @@ model CandidateApplication {
   job         Job           @relation(fields: [jobId], references: [id], onDelete: Cascade)
   stage       PipelineStage @default(SOURCED)
   recruiterId String?
-  recruiter   Employee?     @relation("ApplicationRecruiter", fields: [recruiterId], references: [id])
+  recruiter   User?         @relation("ApplicationRecruiter", fields: [recruiterId], references: [id])
   note        String?
 
   placement Placement?
@@ -715,32 +496,7 @@ model Payment {
 }
 
 // ---------------------------------------------------------------------------
-// EXPENSES
-// ---------------------------------------------------------------------------
-
-model Expense {
-  id            String      @id @default(cuid())
-  expenseDate   DateTime    @db.Date
-  category      String
-  amount        Decimal     @db.Decimal(12, 2)
-  vendor        String?
-  paymentMethod String?
-  description   String?
-  receiptRef    String?
-  employeeId    String?
-  employee      Employee?   @relation("ExpenseEmployee", fields: [employeeId], references: [id])
-  notes         String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([expenseDate])
-  @@index([category])
-  @@map("expenses")
-}
-
-// ---------------------------------------------------------------------------
-// TASKS (lean, Phase 1 minimal) / NOTIFICATIONS / DOCUMENTS
+// TASKS (lean) / NOTIFICATIONS / DOCUMENTS
 // ---------------------------------------------------------------------------
 
 enum TaskStatus {
@@ -754,7 +510,7 @@ model Task {
   id         String      @id @default(cuid())
   title      String
   assigneeId String?
-  assignee   Employee?   @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  assignee   User?       @relation("TaskAssignee", fields: [assigneeId], references: [id])
   dueDate    DateTime?
   priority   JobPriority @default(MEDIUM)
   status     TaskStatus  @default(OPEN)
@@ -871,21 +627,6 @@ model CompanySettings {
   defaultReplacementText String?
   invoiceFooter         String? @default("Thank you for your business.")
   invoiceEmailTemplate  String?
-
-  // Attendance rules (configurable, not hardcoded)
-  officeStartTime String @default("10:00") // HH:mm — office starts 10:00 AM
-  officeEndTime   String @default("18:00") // 6:00 PM
-  graceMinutes    Int    @default(15)
-  halfDayHours    Decimal @db.Decimal(4, 2) @default(4) // under 4h = SHORT (not half-day)
-  fullDayHours    Decimal @db.Decimal(4, 2) @default(7) // 7h+ = full present day
-  workingDaysPerWeek Int @default(5)
-  weeklyOff       String  @default("Sat,Sun") // Mon-Fri working
-
-  // Default annual leave quotas (spec §19). Applied when an employee's balance
-  // for a year is first created. Admin-configurable.
-  leaveQuotaCasual Decimal @db.Decimal(5, 1) @default(12)
-  leaveQuotaSick   Decimal @db.Decimal(5, 1) @default(6)
-  leaveQuotaPaid   Decimal @db.Decimal(5, 1) @default(12)
 
   updatedAt DateTime @updatedAt
 

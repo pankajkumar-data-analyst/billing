@@ -11,9 +11,9 @@ export const dynamic = "force-dynamic";
 
 export default async function TasksPage() {
   const user = await requireUser();
-  // Admins see all tasks; employees see only their own (server-side scope).
+  // Admins see all tasks; everyone else sees only tasks assigned to them.
   const isAdmin = hasPermission(user, PERMISSIONS.USER_MANAGE);
-  const scope: Prisma.TaskWhereInput = isAdmin ? {} : { assigneeId: user.employeeId ?? "__none__" };
+  const scope: Prisma.TaskWhereInput = isAdmin ? {} : { assigneeId: user.id };
 
   const now = new Date();
   const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
@@ -21,7 +21,7 @@ export default async function TasksPage() {
   const [openTasks, doneTasks, assignees] = await Promise.all([
     prisma.task.findMany({ where: { AND: [scope, { status: { in: ["OPEN", "IN_PROGRESS"] } }] }, include: { assignee: true }, orderBy: [{ dueDate: "asc" }] }),
     prisma.task.findMany({ where: { AND: [scope, { status: "DONE" }] }, include: { assignee: true }, orderBy: { updatedAt: "desc" }, take: 20 }),
-    isAdmin ? prisma.employee.findMany({ where: { status: "ACTIVE" }, select: { id: true, name: true }, orderBy: { name: "asc" } }) : Promise.resolve([]),
+    prisma.user.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
   ]);
 
   const overdue = openTasks.filter((t) => t.dueDate && t.dueDate < new Date(now.getFullYear(), now.getMonth(), now.getDate()));

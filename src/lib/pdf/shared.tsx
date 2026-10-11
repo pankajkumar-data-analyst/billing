@@ -4,7 +4,7 @@ import fs from "fs";
 import { StyleSheet, Font, Svg, Rect, Image } from "@react-pdf/renderer";
 
 /**
- * Shared PDF helpers used by both the invoice and payslip documents:
+ * Shared PDF helpers for the invoice document:
  *  - Noto Sans registration (so ₹ and other glyphs render; Helvetica can't)
  *  - nl(): breaks f-ligatures + normalises dashes so text stays correct
  *  - LogoMark: the real transparent PNG logo (fallback: gold vector "X")

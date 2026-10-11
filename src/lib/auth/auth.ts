@@ -25,7 +25,6 @@ declare module "next-auth" {
       id: string;
       role: string;
       permissions: string[];
-      employeeId: string | null;
     } & DefaultSession["user"];
   }
 }
@@ -51,7 +50,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           where: { email: email.toLowerCase() },
           include: {
             role: { include: { permissions: { include: { permission: true } } } },
-            employee: true,
           },
         });
 
@@ -80,10 +78,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         return {
           id: user.id,
           email: user.email,
-          name: user.employee?.name ?? user.email,
+          name: user.name || user.email,
           role: user.role.name,
           permissions,
-          employeeId: user.employee?.id ?? null,
         };
       },
     }),
@@ -92,18 +89,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async jwt({ token, user }) {
       if (user) {
         token.uid = (user as { id: string }).id;
+        token.name = (user as { name: string }).name;
         token.role = (user as { role: string }).role;
         token.permissions = (user as { permissions: string[] }).permissions;
-        token.employeeId = (user as { employeeId: string | null }).employeeId;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.uid as string;
+        session.user.name = (token.name as string) ?? session.user.email ?? "";
         session.user.role = token.role as string;
         session.user.permissions = (token.permissions as string[]) ?? [];
-        session.user.employeeId = (token.employeeId as string | null) ?? null;
       }
       return session;
     },

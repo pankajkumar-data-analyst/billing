@@ -43,29 +43,6 @@ export const PERMISSIONS = {
   PAYMENT_VIEW: "payment.view",
   PAYMENT_MANAGE: "payment.manage",
 
-  // Expenses (Admin-only)
-  EXPENSE_VIEW: "expense.view",
-  EXPENSE_MANAGE: "expense.manage",
-
-  // Employees / HR
-  EMPLOYEE_VIEW: "employee.view",
-  EMPLOYEE_MANAGE: "employee.manage",
-  SALARY_VIEW: "salary.view", // view any employee salary (Admin)
-  SALARY_MANAGE: "salary.manage", // edit salary (Admin)
-
-  // Attendance
-  ATTENDANCE_SELF: "attendance.self", // clock in/out, view own
-  ATTENDANCE_MANAGE: "attendance.manage", // view all, approve corrections
-
-  // Leave
-  LEAVE_SELF: "leave.self", // apply/cancel own
-  LEAVE_MANAGE: "leave.manage", // approve/reject
-
-  // Payroll (Admin-only)
-  PAYROLL_VIEW: "payroll.view",
-  PAYROLL_PROCESS: "payroll.process",
-  PAYSLIP_SELF_VIEW: "payslip.self.view", // view own payslips
-
   // Reports (financial exports Admin-only)
   REPORT_VIEW: "report.view",
   REPORT_EXPORT_FINANCIAL: "report.export.financial",
@@ -94,20 +71,23 @@ export type RoleName = (typeof ROLES)[keyof typeof ROLES];
 export const ALL_PERMISSIONS: PermissionKey[] = Object.values(PERMISSIONS);
 
 /**
- * Recruiter/employee permission set. Deliberately excludes:
- * company-wide financials, salaries, payroll processing, settings, users,
- * audit logs, invoice/payment/expense management.
+ * Recruiter permission set. The team is small and trusted, so recruiters get
+ * broad view/manage access to the recruitment pipeline. Deliberately excludes
+ * only the owner-level controls: settings, user/role management and audit logs.
  */
 export const RECRUITER_PERMISSIONS: PermissionKey[] = [
   PERMISSIONS.DASHBOARD_SELF_VIEW,
-  PERMISSIONS.CLIENT_VIEW, // assigned clients only (scoped in queries)
-  PERMISSIONS.JOB_VIEW_ASSIGNED,
+  PERMISSIONS.CLIENT_VIEW,
+  PERMISSIONS.CLIENT_MANAGE,
+  PERMISSIONS.JOB_VIEW,
+  PERMISSIONS.JOB_MANAGE,
   PERMISSIONS.CANDIDATE_VIEW,
   PERMISSIONS.CANDIDATE_MANAGE,
   PERMISSIONS.PLACEMENT_VIEW,
-  PERMISSIONS.ATTENDANCE_SELF,
-  PERMISSIONS.LEAVE_SELF,
-  PERMISSIONS.PAYSLIP_SELF_VIEW,
+  PERMISSIONS.PLACEMENT_MANAGE,
+  PERMISSIONS.INVOICE_VIEW,
+  PERMISSIONS.PAYMENT_VIEW,
+  PERMISSIONS.REPORT_VIEW,
   PERMISSIONS.DOCUMENT_VIEW,
 ];
 
@@ -135,19 +115,6 @@ export const PERMISSION_DESCRIPTIONS: Record<string, string> = {
   [PERMISSIONS.INVOICE_NUMBERING]: "Change invoice numbering",
   [PERMISSIONS.PAYMENT_VIEW]: "View payments",
   [PERMISSIONS.PAYMENT_MANAGE]: "Record/reverse payments",
-  [PERMISSIONS.EXPENSE_VIEW]: "View expenses",
-  [PERMISSIONS.EXPENSE_MANAGE]: "Manage expenses",
-  [PERMISSIONS.EMPLOYEE_VIEW]: "View employees",
-  [PERMISSIONS.EMPLOYEE_MANAGE]: "Create/edit employees",
-  [PERMISSIONS.SALARY_VIEW]: "View employee salaries",
-  [PERMISSIONS.SALARY_MANAGE]: "Edit employee salaries",
-  [PERMISSIONS.ATTENDANCE_SELF]: "Clock in/out and view own attendance",
-  [PERMISSIONS.ATTENDANCE_MANAGE]: "Manage all attendance",
-  [PERMISSIONS.LEAVE_SELF]: "Apply/cancel own leave",
-  [PERMISSIONS.LEAVE_MANAGE]: "Approve/reject leave",
-  [PERMISSIONS.PAYROLL_VIEW]: "View payroll",
-  [PERMISSIONS.PAYROLL_PROCESS]: "Process payroll",
-  [PERMISSIONS.PAYSLIP_SELF_VIEW]: "View own payslips",
   [PERMISSIONS.REPORT_VIEW]: "View reports",
   [PERMISSIONS.REPORT_EXPORT_FINANCIAL]: "Export financial reports",
   [PERMISSIONS.DOCUMENT_VIEW]: "View documents",

@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export default async function NewCandidatePage() {
   await requirePermission(PERMISSIONS.CANDIDATE_MANAGE);
-  const recruiters = await prisma.employee.findMany({ where: { status: "ACTIVE" }, orderBy: { name: "asc" }, select: { id: true, name: true } });
+  const recruiters = await prisma.user.findMany({ where: { isActive: true }, orderBy: { name: "asc" }, select: { id: true, name: true } });
   return (
     <div>
       <PageHeader title="New Candidate" />

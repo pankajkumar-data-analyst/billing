@@ -24,7 +24,6 @@ export interface SessionUser {
   name: string;
   role: string;
   permissions: string[];
-  employeeId: string | null;
 }
 
 /** Get the current user or null. */

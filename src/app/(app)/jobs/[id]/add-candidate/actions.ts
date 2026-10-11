@@ -44,7 +44,7 @@ export async function addCandidateToJob(
         currentCtc: d.currentCtc != null ? toDbString(d.currentCtc) : null,
         expectedCtc: d.expectedCtc != null ? toDbString(d.expectedCtc) : null,
         noticePeriod: d.noticePeriod, skills: d.skills, source: d.source,
-        recruiterId: d.recruiterId || user.employeeId || null, notes: d.notes,
+        recruiterId: d.recruiterId || user.id || null, notes: d.notes,
       },
     });
     candidateId = created.id;
@@ -61,7 +61,7 @@ export async function addCandidateToJob(
 
   const job = await prisma.job.findUnique({ where: { id: jobId }, select: { recruiterId: true } });
   await prisma.candidateApplication.create({
-    data: { candidateId, jobId, stage: "SOURCED", recruiterId: job?.recruiterId ?? user.employeeId ?? null },
+    data: { candidateId, jobId, stage: "SOURCED", recruiterId: job?.recruiterId ?? user.id ?? null },
   });
 
   revalidatePath(`/jobs/${jobId}`);

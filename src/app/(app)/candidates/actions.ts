@@ -34,7 +34,7 @@ export async function createCandidate(_prev: ActionState, formData: FormData): P
   const user = await assertPermission(PERMISSIONS.CANDIDATE_MANAGE);
   const parsed = candidateSchema.safeParse(Object.fromEntries(formData.entries()));
   if (!parsed.success) return { error: "Please fix the highlighted fields.", fieldErrors: flatten(parsed.error) };
-  const c = await prisma.candidate.create({ data: mapData(parsed.data, user.employeeId) });
+  const c = await prisma.candidate.create({ data: mapData(parsed.data, user.id) });
   revalidatePath("/candidates");
   redirect(`/candidates/${c.id}`);
 }

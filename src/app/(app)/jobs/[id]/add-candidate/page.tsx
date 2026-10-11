@@ -13,7 +13,7 @@ export default async function AddCandidatePage({ params }: { params: { id: strin
   const [job, candidates, recruiters] = await Promise.all([
     prisma.job.findUnique({ where: { id: params.id }, include: { client: true } }),
     prisma.candidate.findMany({ orderBy: { createdAt: "desc" }, take: 50, select: { id: true, fullName: true, mobile: true, currentCompany: true } }),
-    prisma.employee.findMany({ where: { status: "ACTIVE" }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    prisma.user.findMany({ where: { isActive: true }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
   ]);
   if (!job) notFound();
 

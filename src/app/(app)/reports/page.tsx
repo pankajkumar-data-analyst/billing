@@ -46,8 +46,6 @@ export default async function ReportsPage() {
         <KpiCard label="Revenue This Year" value={formatINRCompact(kpis.revenueThisYear)} />
         <KpiCard label="Placements" value={String(placementStats._count)} />
         <KpiCard label="Avg Fee / Placement" value={formatINR(placementStats._avg.calculatedFee ?? 0)} />
-        <KpiCard label="Month Expenses" value={formatINRCompact(kpis.currentMonthExpenses)} />
-        <KpiCard label="Month Payroll" value={formatINRCompact(kpis.currentMonthPayroll)} />
       </div>
 
       <Card>

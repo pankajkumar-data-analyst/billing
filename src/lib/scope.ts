@@ -1,50 +1,30 @@
 import type { SessionUser } from "@/lib/auth/guards";
-import { PERMISSIONS } from "@/lib/rbac";
-import { hasPermission } from "@/lib/auth/guards";
 import type { Prisma } from "@prisma/client";
 
 /**
- * Row-level scoping helpers (spec §4: recruiters see only assigned work).
+ * Row-level scoping helpers.
  *
- * These produce Prisma `where` fragments so the DATABASE QUERY itself is
- * scoped — a recruiter can never fetch another recruiter's jobs even by
- * guessing an ID, because the query filters by recruiterId server-side.
+ * The team is small (a few trusted users) and the recruiter row-level
+ * restriction was removed — every signed-in user with the relevant permission
+ * can see all jobs, candidates, clients and placements. These helpers now
+ * return an empty `where` fragment, but are kept as a single choke-point so a
+ * stricter scope can be reintroduced later in one place if ever needed.
  */
 
-/** Jobs a user may see: all (if JOB_VIEW) or only assigned (JOB_VIEW_ASSIGNED). */
-export function jobScope(user: SessionUser): Prisma.JobWhereInput {
-  if (hasPermission(user, PERMISSIONS.JOB_VIEW)) return {};
-  // assigned-only
-  return { recruiterId: user.employeeId ?? "__none__" };
+/* eslint-disable @typescript-eslint/no-unused-vars */
+
+export function jobScope(_user: SessionUser): Prisma.JobWhereInput {
+  return {};
 }
 
-/** Candidates a recruiter may see: ones they own or applied to their jobs. */
-export function candidateScope(user: SessionUser): Prisma.CandidateWhereInput {
-  if (hasPermission(user, PERMISSIONS.JOB_VIEW)) return {}; // admins/full viewers
-  const empId = user.employeeId ?? "__none__";
-  return {
-    OR: [{ recruiterId: empId }, { applications: { some: { job: { recruiterId: empId } } } }],
-  };
+export function candidateScope(_user: SessionUser): Prisma.CandidateWhereInput {
+  return {};
 }
 
-/**
- * Clients a recruiter may see: only clients that have a job assigned to them.
- * Full viewers (admins / anyone with JOB_VIEW) see all clients.
- */
-export function clientScope(user: SessionUser): Prisma.ClientWhereInput {
-  if (hasPermission(user, PERMISSIONS.JOB_VIEW)) return {};
-  const empId = user.employeeId ?? "__none__";
-  return { jobs: { some: { recruiterId: empId } } };
+export function clientScope(_user: SessionUser): Prisma.ClientWhereInput {
+  return {};
 }
 
-/**
- * Placements a recruiter may see: ones for a job assigned to them or a
- * candidate they own. Full viewers see all.
- */
-export function placementScope(user: SessionUser): Prisma.PlacementWhereInput {
-  if (hasPermission(user, PERMISSIONS.JOB_VIEW)) return {};
-  const empId = user.employeeId ?? "__none__";
-  return {
-    OR: [{ job: { recruiterId: empId } }, { candidate: { recruiterId: empId } }],
-  };
+export function placementScope(_user: SessionUser): Prisma.PlacementWhereInput {
+  return {};
 }

@@ -18,15 +18,12 @@ export default async function SettingsPage() {
     gstEnabled: s.gstEnabled, gstRate: s.gstRate.toString(),
     defaultPaymentDays: s.defaultPaymentDays, defaultReplacementDays: s.defaultReplacementDays,
     defaultFeePercent: s.defaultFeePercent.toString(), invoiceFooter: s.invoiceFooter, invoiceEmailTemplate: s.invoiceEmailTemplate,
-    officeStartTime: s.officeStartTime, officeEndTime: s.officeEndTime, graceMinutes: s.graceMinutes,
-    halfDayHours: s.halfDayHours.toString(), fullDayHours: s.fullDayHours.toString(), weeklyOff: s.weeklyOff,
-    leaveQuotaCasual: s.leaveQuotaCasual.toString(), leaveQuotaSick: s.leaveQuotaSick.toString(), leaveQuotaPaid: s.leaveQuotaPaid.toString(),
   };
   return (
     <div>
       <PageHeader
         title="Settings"
-        subtitle="Company, bank, invoice numbering, GST and attendance rules - all configurable here."
+        subtitle="Company, bank, invoice numbering and GST - all configurable here."
         action={<Link href="/settings/audit" className={buttonVariants({ variant: "outline" })}>View Audit Log</Link>}
       />
       <SettingsForm defaults={defaults} />

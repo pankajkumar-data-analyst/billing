@@ -71,27 +71,6 @@ export function SettingsForm({ defaults }: { defaults: Record<string, unknown> }
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader><CardTitle>Attendance Rules</CardTitle></CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-2">
-          <F name="officeStartTime" label="Office Start (HH:mm)"><Input id="officeStartTime" name="officeStartTime" defaultValue={v("officeStartTime")} placeholder="10:00" /></F>
-          <F name="officeEndTime" label="Office End (HH:mm)"><Input id="officeEndTime" name="officeEndTime" defaultValue={v("officeEndTime")} placeholder="19:00" /></F>
-          <F name="graceMinutes" label="Grace (minutes)"><Input id="graceMinutes" name="graceMinutes" type="number" defaultValue={v("graceMinutes")} /></F>
-          <F name="halfDayHours" label="Half-day Threshold (hrs)"><Input id="halfDayHours" name="halfDayHours" type="number" step="0.5" defaultValue={v("halfDayHours")} /></F>
-          <F name="fullDayHours" label="Full-day Hours"><Input id="fullDayHours" name="fullDayHours" type="number" step="0.5" defaultValue={v("fullDayHours")} /></F>
-          <F name="weeklyOff" label="Weekly Off (e.g. Sun)"><Input id="weeklyOff" name="weeklyOff" defaultValue={v("weeklyOff")} /></F>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader><CardTitle>Annual Leave Quotas</CardTitle></CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-3">
-          <F name="leaveQuotaCasual" label="Casual Leave (days/year)"><Input id="leaveQuotaCasual" name="leaveQuotaCasual" type="number" step="0.5" defaultValue={v("leaveQuotaCasual")} /></F>
-          <F name="leaveQuotaSick" label="Sick Leave (days/year)"><Input id="leaveQuotaSick" name="leaveQuotaSick" type="number" step="0.5" defaultValue={v("leaveQuotaSick")} /></F>
-          <F name="leaveQuotaPaid" label="Paid Leave (days/year)"><Input id="leaveQuotaPaid" name="leaveQuotaPaid" type="number" step="0.5" defaultValue={v("leaveQuotaPaid")} /></F>
-        </CardContent>
-      </Card>
-
       <div className="flex justify-end"><Submit /></div>
     </form>
   );
